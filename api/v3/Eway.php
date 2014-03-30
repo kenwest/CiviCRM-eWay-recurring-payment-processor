@@ -84,7 +84,7 @@ function civicrm_api3_job_eway($params) {
         $apiResult[] = "Successfully processed payment for pending contribution ID: " . $pending_contribution['contribution']->id;
 
         $apiResult[] = "Marking contribution as complete";
-        $pending_contribution['contribution']->trxn_id = $result->ewayTrxnNumber;
+        $pending_contribution['contribution']->trxn_id = $result['ewayTrxnNumber'];
         complete_contribution($pending_contribution['contribution']);
 
         $apiResult[] = "Sending receipt";
@@ -129,7 +129,7 @@ function civicrm_api3_job_eway($params) {
         $new_contribution_record->total_amount = $contribution->amount;
         $new_contribution_record->non_deductible_amount = $contribution->amount;
         $new_contribution_record->net_amount = $contribution->amount;
-        $new_contribution_record->trxn_id = $result->ewayTrxnNumber;
+        $new_contribution_record->trxn_id = $result['ewayTrxnNumber'];
         $new_contribution_record->invoice_id = md5(uniqid(rand(), TRUE));
         $new_contribution_record->contribution_recur_id = $contribution->id;
         $new_contribution_record->contribution_status_id = array_search('Completed', $contributionStatus);
