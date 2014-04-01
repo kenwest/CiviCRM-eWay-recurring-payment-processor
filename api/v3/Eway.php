@@ -477,8 +477,32 @@ function send_receipt_email($contribution_id)
     // TODO: Fix CRM_Core_Payment::subscriptionUrl()
     // See comment above.
     $session->set('userID', $activeUser);
+    return _sendReceipt($params);
+}
 
-    list($sent, $subject, $message, $html) = CRM_Core_BAO_MessageTemplate::sendTemplate($params);
+/**
+ * Version agnostic receipt sending function
+ * @param params
+ */
 
-    return $sent;
+function _sendReceipt($params) {
+  if(_versionAtLeast(4.4)) {
+    list($sent) = CRM_Core_BAO_MessageTemplate::sendTemplate($params);
+  }
+  else {
+    list($sent) = CRM_Core_BAO_MessageTemplates::sendTemplate($params);
+  }
+  return $sent;
+}
+
+/**
+ * is version of at least the version provided
+ * @param number $version
+ * @return boolean
+ */
+function _versionAtLeast($version) {
+  $codeVersion = explode('.', CRM_Utils_System::version());
+ if (version_compare($codeVersion[0] . '.' . $codeVersion[1], $version) >= 0) {
+   return TRUE;
+ }
 }
