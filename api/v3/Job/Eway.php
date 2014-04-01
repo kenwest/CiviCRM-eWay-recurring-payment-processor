@@ -159,21 +159,19 @@ function civicrm_api3_job_eway($params) {
  * @return array An associative array of Processor Id => eWAY Token Client
  */
 function get_eway_token_clients() {
-    $processor = new CRM_Financial_BAO_PaymentProcessor();
-    $processor->whereAdd("`class_name` = 'com.chrischinchilla.ewayrecurring'");
-    $processor->find();
-
-    $result = array();
-
-    while ($processor->fetch()) {
-        $result[$processor->id] = eway_token_client (
-                                        $processor->url_recur,
-                                        $processor->subject,
-                                        $processor->user_name,
-                                        $processor->password );
-    }
-
-    return $result;
+  $processors = civicrm_api3('payment_processor', 'get', array(
+    'class_name' => 'com.chrischinchilla.ewayrecurring')
+  );
+  $result = array();
+  foreach ($processors['values'] as $id => $processor) {
+    $result[$id] = eway_token_client (
+      $processor['url_recur'],
+      $processor['subject'],
+      $processor['user_name'],
+      $processor['password']
+    );
+  }
+  return $result;
 }
 
 /**
