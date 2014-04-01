@@ -124,7 +124,12 @@ function civicrm_api3_job_eway($params) {
         $new_contribution_record->invoice_id = md5(uniqid(rand(), TRUE));
         $new_contribution_record->contribution_recur_id = $contribution->id;
         $new_contribution_record->contribution_status_id = array_search('Completed', $contributionStatus);
-        $new_contribution_record->financial_type_id = $contribution->financial_type_id;
+        if(_versionAtLeast(4.4)) {
+          $new_contribution_record->financial_type_id = $contribution->financial_type_id;
+        }
+        else {
+          $new_contribution_record->contribution_type_id = $contribution->contribution_type_id;
+        }
         $new_contribution_record->currency = $contribution->currency;
         //copy info from previous contribution belonging to the same recurring contribution
         if ($past_contribution != null) {
