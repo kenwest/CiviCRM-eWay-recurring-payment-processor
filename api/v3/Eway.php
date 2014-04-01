@@ -249,7 +249,12 @@ function get_scheduled_contributions($eway_token_clients)
 
     // Get Recurring Contributions that are In Progress and are due to be processed by the eWAY Recurring processor
     $scheduled_today = new CRM_Contribute_BAO_ContributionRecur();
-    $scheduled_today->whereAdd("`next_sched_contribution_date` <= '" . date('Y-m-d 00:00:00') . "'");
+    if(_versionAtLeast(4.4)) {
+      $scheduled_today->whereAdd("`next_sched_contribution_date` <= '" . date('Y-m-d 00:00:00') . "'");
+    }
+    else {
+      $scheduled_today->whereAdd("`next_sched_contribution` <= '" . date('Y-m-d 00:00:00') . "'");
+    }
     $scheduled_today->whereAdd("`contribution_status_id` = " . array_search('In Progress', $contributionStatus));
     $scheduled_today->whereAdd( "`payment_processor_id` in (" . implode(', ', array_keys($eway_token_clients)) . ")" );
     $scheduled_today->find();
@@ -363,6 +368,8 @@ function update_recurring_contribution($current_recur)
      * Creating a new recurrence object as the DAO had problems saving unless
      * all the dates were overwritten. Seems easier to create a new object and
      * only update the fields that are needed
+     * @todo - switching to using the api would solve the DAO dates problem & api accepts 'In Progress'
+     * so no need to resolve it first.
      */
     $updated_recur = new CRM_Contribute_BAO_ContributionRecur();
     $updated_recur->id = $current_recur->id;
@@ -373,17 +380,29 @@ function update_recurring_contribution($current_recur)
      * Update the next date to schedule a contribution.
      * If all installments complete, mark the recurring contribution as complete
      */
-    $updated_recur->next_sched_contribution_date = CRM_Utils_Date::isoToMysql(
-            date('Y-m-d 00:00:00',
-                    strtotime( '+' . $current_recur->frequency_interval . ' ' . $current_recur->frequency_unit)
-            )
-    );
+    if(_versionAtLeast(4.4)) {
+      $updated_recur->next_sched_contribution_date = CRM_Utils_Date::isoToMysql(
+        date('Y-m-d 00:00:00',
+        strtotime( '+' . $current_recur->frequency_interval . ' ' . $current_recur->frequency_unit)
+      ));
+    }
+    else {
+      $updated_recur->next_sched_contribution = CRM_Utils_Date::isoToMysql(
+        date('Y-m-d 00:00:00',
+          strtotime( '+' . $current_recur->frequency_interval . ' ' . $current_recur->frequency_unit)
+        ));
+    }
     if ( isset($current_recur->installments) && $current_recur->installments > 0 ) {
         $contributions = new CRM_Contribute_BAO_Contribution();
         $contributions->whereAdd("`contribution_recur_id` = " . $current_recur->id);
         $contributions->find();
         if ($contributions->N >= $current_recur->installments) {
+          if(_versionAtLeast(4.4)) {
             $updated_recur->next_sched_contribution_date = null;
+          }
+          else {
+            $updated_recur->next_sched_contribution = null;
+          }
             $updated_recur->contribution_status_id = array_search('Completed', $contributionStatus);
             $updated_recur->end_date = CRM_Utils_Date::isoToMysql(date('Y-m-d 00:00:00'));
         }
