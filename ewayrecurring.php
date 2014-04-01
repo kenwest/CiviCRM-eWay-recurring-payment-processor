@@ -649,5 +649,14 @@ function ewayrecurring_civicrm_upgrade($op, CRM_Queue_Queue $queue = NULL) {
  * is installed, disabled, uninstalled.
  */
 function ewayrecurring_civicrm_managed(&$entities) {
+  try {
+    //handling for versions where job.create api does not exist
+    civicrm_api3('job', 'create', array());
+  }
+  catch (Exception $e) {
+    if(stristr($e->getMessage(), 'does not exist')) {
+      return;
+    }
+  }
   return _ewayrecurring_civix_civicrm_managed($entities);
 }
