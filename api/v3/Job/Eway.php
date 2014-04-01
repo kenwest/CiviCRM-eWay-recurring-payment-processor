@@ -422,6 +422,8 @@ function update_recurring_contribution($current_recur)
  */
 function send_receipt_email($contribution_id)
 {
+  //@todo there is actually an api contribution.sendconfirmation which is supposed to do all of this
+  // test the api & potentially replace this function with a call to that api
     $contribution = new CRM_Contribute_BAO_Contribution();
     $contribution->id = $contribution_id;
     $contribution->find(true);
@@ -479,8 +481,11 @@ function send_receipt_email($contribution_id)
     $activeUser = $session->get('userID');
     $session->set('userID', 0);
 
-    $eWayProcessor = CRM_Financial_BAO_PaymentProcessor::getProcessorForEntity
-                    ($contribution->contribution_recur_id, 'recur', 'obj');
+    $processor = array();
+    $mode = empty($contribution->is_test) ? 'live' : 'test';
+    $eWayProcessor = new com_chrischinchilla_ewayrecurring($mode, $processor);
+
+
     if ( $eWayProcessor->isSupported('cancelSubscription')) {
       $params['tplParams']['cancelSubscriptionUrl'] =
               $eWayProcessor->subscriptionURL($contribution->contribution_recur_id, 'recur');
