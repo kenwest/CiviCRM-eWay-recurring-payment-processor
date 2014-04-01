@@ -38,8 +38,6 @@ function civicrm_api3_job_eway($params) {
     // The title used for receipt messages
     define('RECEIPT_SUBJECT_TITLE', 'Regular Donation');
 
-    $config = CRM_Core_Config::singleton();
-
     require_once 'nusoap.php';
 
     $apiResult = array();
