@@ -90,7 +90,6 @@ class CRM_Ewayrecurring_Upgrader_Base {
    * @return bool
    */
   protected static function executeCustomDataFileByAbsPath($xml_file) {
-    require_once 'CRM/Utils/Migrate/Import.php';
     $import = new CRM_Utils_Migrate_Import();
     $import->run($xml_file);
     return TRUE;

@@ -40,15 +40,6 @@ function civicrm_api3_job_eway($params) {
 
     $config = CRM_Core_Config::singleton();
 
-    require_once 'api/api.php';
-    require_once 'CRM/Contribute/BAO/ContributionRecur.php';
-    require_once 'CRM/Contribute/BAO/Contribution.php';
-    require_once 'CRM/Contribute/PseudoConstant.php';
-    require_once 'CRM/Financial/BAO/PaymentProcessor.php';
-    require_once 'CRM/Utils/Date.php';
-    require_once 'CRM/Core/BAO/MessageTemplate.php';
-    require_once 'CRM/Contact/BAO/Contact/Location.php';
-    require_once 'CRM/Core/BAO/Domain.php';
     require_once 'nusoap.php';
 
     $apiResult = array();

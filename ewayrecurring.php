@@ -1,7 +1,6 @@
 <?php
 
 require_once 'ewayrecurring.civix.php';
-require_once 'CRM/Core/Payment.php';
 require_once 'nusoap.php';
 
 class com_chrischinchilla_ewayrecurring extends CRM_Core_Payment
@@ -174,9 +173,9 @@ class com_chrischinchilla_ewayrecurring extends CRM_Core_Payment
                     return self::errorExit(9011, 'Failed to create managed customer - result is false');
                 } else if (is_array($result)) {
                     return self::errorExit(9011, 'Failed to create managed customer - result ('
-                                                . implode(', ', array_keys($result)) 
+                                                . implode(', ', array_keys($result))
                                                 . ') is ('
-                                                . implode(', ', $result) 
+                                                . implode(', ', $result)
                                                 . ')');
                 } else if (!is_numeric($result)) {
                     return self::errorExit(9011, 'Failed to create managed customer - result is ' . $result);
@@ -197,7 +196,6 @@ class com_chrischinchilla_ewayrecurring extends CRM_Core_Payment
             );
 
             //send recurring Notification email for user
-            require_once 'CRM/Contribute/BAO/ContributionRecur.php';
             $recur = new CRM_Contribute_BAO_ContributionRecur();
             $recur->id = $params['contributionRecurID'];
             $recur->find(true);
@@ -431,7 +429,6 @@ class com_chrischinchilla_ewayrecurring extends CRM_Core_Payment
     */
     function _checkDupe( $invoiceId )
     {
-        require_once 'CRM/Contribute/DAO/Contribution.php';
         $contribution = new CRM_Contribute_DAO_Contribution( );
         $contribution->invoice_id = $invoiceId;
         return $contribution->find( );
@@ -511,7 +508,7 @@ class com_chrischinchilla_ewayrecurring extends CRM_Core_Payment
     /*
      * All details about recurring contributions are maintained in CiviCRM, and
      * eWAY only records the Token Customer and completed contributions. Given
-     * this, we can provide a do-nothing implementation of 'cancelSubscription' 
+     * this, we can provide a do-nothing implementation of 'cancelSubscription'
      */
     function cancelSubscription(&$message = '', $params = array() ) {
         return TRUE;
@@ -520,7 +517,7 @@ class com_chrischinchilla_ewayrecurring extends CRM_Core_Payment
     /*
      * All details about recurring contributions are maintained in CiviCRM, and
      * eWAY only records the Token Customer and completed contributions. Given
-     * this, we can provide a do-nothing implementation of 'changeSubscriptionAmount' 
+     * this, we can provide a do-nothing implementation of 'changeSubscriptionAmount'
      */
     function changeSubscriptionAmount(&$message = '', $params = array() ) {
         return TRUE;
@@ -530,9 +527,6 @@ class com_chrischinchilla_ewayrecurring extends CRM_Core_Payment
     {
         // Initialization call is required to use CiviCRM APIs.
         civicrm_initialize( true );
-
-        require_once 'CRM/Utils/Mail.php';
-        require_once 'CRM/Core/BAO/Domain.php';
 
         list( $fromName, $fromEmail ) = CRM_Core_BAO_Domain::getNameAndEmail( );
         $from      = "$fromName <$fromEmail>";
