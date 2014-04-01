@@ -157,9 +157,9 @@ function civicrm_api3_job_eway($params) {
 
 /**
  * get_eway_token_clients
- * 
+ *
  * Find the eWAY recurring payment processors
- * 
+ *
  * @return array An associative array of Processor Id => eWAY Token Client
  */
 function get_eway_token_clients() {
@@ -254,7 +254,7 @@ function get_scheduled_contributions($eway_token_clients)
         return array();
     }
 
-	$contributionStatus = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
+  $contributionStatus = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
 
     // Get Recurring Contributions that are In Progress and are due to be processed by the eWAY Recurring processor
     $scheduled_today = new CRM_Contribute_BAO_ContributionRecur();
@@ -319,7 +319,7 @@ function process_eway_payment($soap_client, $managed_customer_id, $amount_in_cen
 {
     // PHP bug: https://bugs.php.net/bug.php?id=49669. issue with value greater than 2147483647.
     settype($managed_customer_id,"float");
-	
+
     $paymentinfo = array(
         'man:managedCustomerID' => $managed_customer_id,
         'man:amount' => $amount_in_cents,
@@ -377,13 +377,13 @@ function update_recurring_contribution($current_recur)
     $updated_recur->id = $current_recur->id;
     $updated_recur->contribution_status_id = array_search('In Progress', $contributionStatus);
     $updated_recur->modified_date = CRM_Utils_Date::isoToMysql(date('Y-m-d H:i:s'));
-    
+
     /*
-     * Update the next date to schedule a contribution. 
+     * Update the next date to schedule a contribution.
      * If all installments complete, mark the recurring contribution as complete
      */
     $updated_recur->next_sched_contribution_date = CRM_Utils_Date::isoToMysql(
-            date('Y-m-d 00:00:00', 
+            date('Y-m-d 00:00:00',
                     strtotime( '+' . $current_recur->frequency_interval . ' ' . $current_recur->frequency_unit)
             )
     );
@@ -420,7 +420,7 @@ function send_receipt_email($contribution_id)
     $domainValues     = CRM_Core_BAO_Domain::getNameAndEmail();
     $receiptFrom      = "$domainValues[0] <$domainValues[1]>";
     $receiptFromEmail = $domainValues[1];
-    
+
     $page = new CRM_Contribute_BAO_ContributionPage();
     $page->id = $contribution->contribution_page_id;
     $page->find(true);
@@ -470,17 +470,17 @@ function send_receipt_email($contribution_id)
 
     $eWayProcessor = CRM_Financial_BAO_PaymentProcessor::getProcessorForEntity
                     ($contribution->contribution_recur_id, 'recur', 'obj');
-    if ( $eWayProcessor->isSupported('cancelSubscription') ) {
-    	$params['tplParams']['cancelSubscriptionUrl'] =
-    	        $eWayProcessor->subscriptionURL($contribution->contribution_recur_id, 'recur');
+    if ( $eWayProcessor->isSupported('cancelSubscription')) {
+      $params['tplParams']['cancelSubscriptionUrl'] =
+              $eWayProcessor->subscriptionURL($contribution->contribution_recur_id, 'recur');
     }
     if ( $eWayProcessor->isSupported('updateSubscriptionBillingInfo') ) {
-    	$params['tplParams']['updateSubscriptionBillingUrl'] =
-    	        $eWayProcessor->subscriptionURL($contribution->contribution_recur_id, 'recur', 'billing');
+      $params['tplParams']['updateSubscriptionBillingUrl'] =
+              $eWayProcessor->subscriptionURL($contribution->contribution_recur_id, 'recur', 'billing');
     }
     if ( $eWayProcessor->isSupported('changeSubscriptionAmount') ) {
-    	$params['tplParams']['updateSubscriptionUrl'] =
-    	        $eWayProcessor->subscriptionURL($contribution->contribution_recur_id, 'recur', 'update');
+      $params['tplParams']['updateSubscriptionUrl'] =
+              $eWayProcessor->subscriptionURL($contribution->contribution_recur_id, 'recur', 'update');
     }
 
     // TODO: Fix CRM_Core_Payment::subscriptionUrl()
