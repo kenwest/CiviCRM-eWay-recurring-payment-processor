@@ -1,21 +1,12 @@
-This is very much BETA right now, go ahead and use it, but I make no guarantees about anything, however, you will be helping me test things :)
+This is very much BETA right now, go ahead and use it, but I make no guarantees about anything.
+However, you will be helping me test things :)
 
-These settings need to be added to the 'civicrm.settings.php' file, I will figure out how to change this in the future.
+This branch supports CiviCRM versions 4.2 - 4.4. For a period there were parallel developments and those
+have been merged into this branch - making it quite different from the other branches. They are no longer
+being developed. It may be necessary to uninstall those versions to install this as it is a 'module' extension
+- if you need to do so you should alter the 'name' of the eway recurring processor in the 'payment_processor_type'
+table. After it is installed remove the new entry & name the original one back.
 
-define('PENDING_CONTRIBUTION_STATUS_ID', 2);
-// Typically 2, but may be different depending on your setup
-
-define('COMPLETE_CONTRIBUTION_STATUS_ID', 1);
-// Typically 1, but may be different depending on your setup
-
-define('CANCELLED_CONTRIBUTION_STATUS_ID', 3);
-// Typically 3, but may be different depending on your setup
-
-
-define('PAYMENT_PROCESSOR_ID', 9);
-// The ID of your CiviCRM eWay recurring payment processor
-
-define('RECEIPT_SUBJECT_TITLE', 'Monthly Donation');
-// Every period a receipt will get sent, what should it's subject be
+Updates are done via scheduled jobs - depending on your version this will be automatically added to the scheduled jobs page
 
 This extension has quite a history, this documentation will be fleshed out in the future, but it wouldn't have been possible without the efforts and backing of : Voiceless, Community Builders, The Australasian Tuberous Sclerosis Society, Henare Degan and RIGPA.

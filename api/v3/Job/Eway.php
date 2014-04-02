@@ -38,17 +38,6 @@ function civicrm_api3_job_eway($params) {
     // The title used for receipt messages
     define('RECEIPT_SUBJECT_TITLE', 'Regular Donation');
 
-    $config = CRM_Core_Config::singleton();
-
-    require_once 'api/api.php';
-    require_once 'CRM/Contribute/BAO/ContributionRecur.php';
-    require_once 'CRM/Contribute/BAO/Contribution.php';
-    require_once 'CRM/Contribute/PseudoConstant.php';
-    require_once 'CRM/Financial/BAO/PaymentProcessor.php';
-    require_once 'CRM/Utils/Date.php';
-    require_once 'CRM/Core/BAO/MessageTemplate.php';
-    require_once 'CRM/Contact/BAO/Contact/Location.php';
-    require_once 'CRM/Core/BAO/Domain.php';
     require_once 'nusoap.php';
 
     $apiResult = array();
@@ -133,7 +122,12 @@ function civicrm_api3_job_eway($params) {
         $new_contribution_record->invoice_id = md5(uniqid(rand(), TRUE));
         $new_contribution_record->contribution_recur_id = $contribution->id;
         $new_contribution_record->contribution_status_id = array_search('Completed', $contributionStatus);
-        $new_contribution_record->financial_type_id = $contribution->financial_type_id;
+        if(_versionAtLeast(4.4)) {
+          $new_contribution_record->financial_type_id = $contribution->financial_type_id;
+        }
+        else {
+          $new_contribution_record->contribution_type_id = $contribution->contribution_type_id;
+        }
         $new_contribution_record->currency = $contribution->currency;
         //copy info from previous contribution belonging to the same recurring contribution
         if ($past_contribution != null) {
@@ -157,27 +151,25 @@ function civicrm_api3_job_eway($params) {
 
 /**
  * get_eway_token_clients
- * 
+ *
  * Find the eWAY recurring payment processors
- * 
+ *
  * @return array An associative array of Processor Id => eWAY Token Client
  */
 function get_eway_token_clients() {
-    $processor = new CRM_Financial_BAO_PaymentProcessor();
-    $processor->whereAdd("`class_name` = 'com.chrischinchilla.ewayrecurring'");
-    $processor->find();
-
-    $result = array();
-
-    while ($processor->fetch()) {
-        $result[$processor->id] = eway_token_client (
-                                        $processor->url_recur,
-                                        $processor->subject,
-                                        $processor->user_name,
-                                        $processor->password );
-    }
-
-    return $result;
+  $processors = civicrm_api3('payment_processor', 'get', array(
+    'class_name' => 'com.chrischinchilla.ewayrecurring')
+  );
+  $result = array();
+  foreach ($processors['values'] as $id => $processor) {
+    $result[$id] = eway_token_client (
+      $processor['url_recur'],
+      $processor['subject'],
+      $processor['user_name'],
+      $processor['password']
+    );
+  }
+  return $result;
 }
 
 /**
@@ -254,11 +246,16 @@ function get_scheduled_contributions($eway_token_clients)
         return array();
     }
 
-	$contributionStatus = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
+  $contributionStatus = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
 
     // Get Recurring Contributions that are In Progress and are due to be processed by the eWAY Recurring processor
     $scheduled_today = new CRM_Contribute_BAO_ContributionRecur();
-    $scheduled_today->whereAdd("`next_sched_contribution_date` <= '" . date('Y-m-d 00:00:00') . "'");
+    if(_versionAtLeast(4.4)) {
+      $scheduled_today->whereAdd("`next_sched_contribution_date` <= '" . date('Y-m-d 00:00:00') . "'");
+    }
+    else {
+      $scheduled_today->whereAdd("`next_sched_contribution` <= '" . date('Y-m-d 00:00:00') . "'");
+    }
     $scheduled_today->whereAdd("`contribution_status_id` = " . array_search('In Progress', $contributionStatus));
     $scheduled_today->whereAdd( "`payment_processor_id` in (" . implode(', ', array_keys($eway_token_clients)) . ")" );
     $scheduled_today->find();
@@ -319,7 +316,7 @@ function process_eway_payment($soap_client, $managed_customer_id, $amount_in_cen
 {
     // PHP bug: https://bugs.php.net/bug.php?id=49669. issue with value greater than 2147483647.
     settype($managed_customer_id,"float");
-	
+
     $paymentinfo = array(
         'man:managedCustomerID' => $managed_customer_id,
         'man:amount' => $amount_in_cents,
@@ -372,27 +369,41 @@ function update_recurring_contribution($current_recur)
      * Creating a new recurrence object as the DAO had problems saving unless
      * all the dates were overwritten. Seems easier to create a new object and
      * only update the fields that are needed
+     * @todo - switching to using the api would solve the DAO dates problem & api accepts 'In Progress'
+     * so no need to resolve it first.
      */
     $updated_recur = new CRM_Contribute_BAO_ContributionRecur();
     $updated_recur->id = $current_recur->id;
     $updated_recur->contribution_status_id = array_search('In Progress', $contributionStatus);
     $updated_recur->modified_date = CRM_Utils_Date::isoToMysql(date('Y-m-d H:i:s'));
-    
+
     /*
-     * Update the next date to schedule a contribution. 
+     * Update the next date to schedule a contribution.
      * If all installments complete, mark the recurring contribution as complete
      */
-    $updated_recur->next_sched_contribution_date = CRM_Utils_Date::isoToMysql(
-            date('Y-m-d 00:00:00', 
-                    strtotime( '+' . $current_recur->frequency_interval . ' ' . $current_recur->frequency_unit)
-            )
-    );
+    if(_versionAtLeast(4.4)) {
+      $updated_recur->next_sched_contribution_date = CRM_Utils_Date::isoToMysql(
+        date('Y-m-d 00:00:00',
+        strtotime( '+' . $current_recur->frequency_interval . ' ' . $current_recur->frequency_unit)
+      ));
+    }
+    else {
+      $updated_recur->next_sched_contribution = CRM_Utils_Date::isoToMysql(
+        date('Y-m-d 00:00:00',
+          strtotime( '+' . $current_recur->frequency_interval . ' ' . $current_recur->frequency_unit)
+        ));
+    }
     if ( isset($current_recur->installments) && $current_recur->installments > 0 ) {
         $contributions = new CRM_Contribute_BAO_Contribution();
         $contributions->whereAdd("`contribution_recur_id` = " . $current_recur->id);
         $contributions->find();
         if ($contributions->N >= $current_recur->installments) {
+          if(_versionAtLeast(4.4)) {
             $updated_recur->next_sched_contribution_date = null;
+          }
+          else {
+            $updated_recur->next_sched_contribution = null;
+          }
             $updated_recur->contribution_status_id = array_search('Completed', $contributionStatus);
             $updated_recur->end_date = CRM_Utils_Date::isoToMysql(date('Y-m-d 00:00:00'));
         }
@@ -411,6 +422,8 @@ function update_recurring_contribution($current_recur)
  */
 function send_receipt_email($contribution_id)
 {
+  //@todo there is actually an api contribution.sendconfirmation which is supposed to do all of this
+  // test the api & potentially replace this function with a call to that api
     $contribution = new CRM_Contribute_BAO_Contribution();
     $contribution->id = $contribution_id;
     $contribution->find(true);
@@ -420,7 +433,7 @@ function send_receipt_email($contribution_id)
     $domainValues     = CRM_Core_BAO_Domain::getNameAndEmail();
     $receiptFrom      = "$domainValues[0] <$domainValues[1]>";
     $receiptFromEmail = $domainValues[1];
-    
+
     $page = new CRM_Contribute_BAO_ContributionPage();
     $page->id = $contribution->contribution_page_id;
     $page->find(true);
@@ -468,26 +481,53 @@ function send_receipt_email($contribution_id)
     $activeUser = $session->get('userID');
     $session->set('userID', 0);
 
-    $eWayProcessor = CRM_Financial_BAO_PaymentProcessor::getProcessorForEntity
-                    ($contribution->contribution_recur_id, 'recur', 'obj');
-    if ( $eWayProcessor->isSupported('cancelSubscription') ) {
-    	$params['tplParams']['cancelSubscriptionUrl'] =
-    	        $eWayProcessor->subscriptionURL($contribution->contribution_recur_id, 'recur');
+    $processor = array();
+    $mode = empty($contribution->is_test) ? 'live' : 'test';
+    $eWayProcessor = new com_chrischinchilla_ewayrecurring($mode, $processor);
+
+
+    if ( $eWayProcessor->isSupported('cancelSubscription')) {
+      $params['tplParams']['cancelSubscriptionUrl'] =
+              $eWayProcessor->subscriptionURL($contribution->contribution_recur_id, 'recur');
     }
     if ( $eWayProcessor->isSupported('updateSubscriptionBillingInfo') ) {
-    	$params['tplParams']['updateSubscriptionBillingUrl'] =
-    	        $eWayProcessor->subscriptionURL($contribution->contribution_recur_id, 'recur', 'billing');
+      $params['tplParams']['updateSubscriptionBillingUrl'] =
+              $eWayProcessor->subscriptionURL($contribution->contribution_recur_id, 'recur', 'billing');
     }
     if ( $eWayProcessor->isSupported('changeSubscriptionAmount') ) {
-    	$params['tplParams']['updateSubscriptionUrl'] =
-    	        $eWayProcessor->subscriptionURL($contribution->contribution_recur_id, 'recur', 'update');
+      $params['tplParams']['updateSubscriptionUrl'] =
+              $eWayProcessor->subscriptionURL($contribution->contribution_recur_id, 'recur', 'update');
     }
 
     // TODO: Fix CRM_Core_Payment::subscriptionUrl()
     // See comment above.
     $session->set('userID', $activeUser);
+    return _sendReceipt($params);
+}
 
-    list($sent, $subject, $message, $html) = CRM_Core_BAO_MessageTemplate::sendTemplate($params);
+/**
+ * Version agnostic receipt sending function
+ * @param params
+ */
 
-    return $sent;
+function _sendReceipt($params) {
+  if(_versionAtLeast(4.4)) {
+    list($sent) = CRM_Core_BAO_MessageTemplate::sendTemplate($params);
+  }
+  else {
+    list($sent) = CRM_Core_BAO_MessageTemplates::sendTemplate($params);
+  }
+  return $sent;
+}
+
+/**
+ * is version of at least the version provided
+ * @param number $version
+ * @return boolean
+ */
+function _versionAtLeast($version) {
+  $codeVersion = explode('.', CRM_Utils_System::version());
+ if (version_compare($codeVersion[0] . '.' . $codeVersion[1], $version) >= 0) {
+   return TRUE;
+ }
 }
