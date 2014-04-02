@@ -9,4 +9,4 @@ table. After it is installed remove the new entry & name the original one back.
 
 Updates are done via scheduled jobs - depending on your version this will be automatically added to the scheduled jobs page
 
-This extension has quite a history, this documentation will be fleshed out in the future, but it wouldn't have been possible without the efforts and backing of : Voiceless, Community Builders, The Australasian Tuberous Sclerosis Society, Henare Degan and RIGPA.
+This extension has quite a history, this documentation will be fleshed out in the future, but it wouldn't have been possible without the efforts and backing of : Voiceless (Sponsor), Community Builders, The Australasian Tuberous Sclerosis Society (Sponsor), Henare Degan, RIGPA (Sponsor), Ken West and Eileen McNaughton.
