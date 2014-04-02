@@ -15,7 +15,7 @@
     <email>noreply@civicrm.org</email>
   </maintainer>
   <releaseDate>2013-08-31</releaseDate>
-  <version>0.0.6</version>
+  <version>0.7</version>
   <develStage>beta</develStage>
   <compatibility>
     <ver>4.2</ver>
