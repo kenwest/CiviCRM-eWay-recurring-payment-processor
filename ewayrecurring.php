@@ -108,7 +108,7 @@ class com_chrischinchilla_ewayrecurring extends CRM_Core_Payment
         //----------------------------------------------------------------------------------------------------
 
         // Was the recurring payment check box checked?
-        if ($params['is_recur'] == 1) {
+        if (isset($params['is_recur']) && $params['is_recur'] == 1) {
 
             // eWAY Gateway URL
             $gateway_URL = $this->_paymentProcessor['url_recur'];
@@ -228,6 +228,11 @@ class com_chrischinchilla_ewayrecurring extends CRM_Core_Payment
                 return self::errorExit( 9002, "Error: Unable to create eWAY Response object.");
             }
 
+            //-------------------------------------------------------------
+            // Prepare some composite data from _paymentProcessor fields
+            //-------------------------------------------------------------
+            $fullAddress = $params['street_address'] . ", " . $params['city'] . ", " . $params['state_province'] . ".";
+
             //----------------------------------------------------------------------------------------------------
             // We use CiviCRM's param's 'invoiceID' as the unique transaction token to feed to eWAY
             // Trouble is that eWAY only accepts 16 chars for the token, while CiviCRM's invoiceID is an 32.
@@ -270,7 +275,6 @@ class com_chrischinchilla_ewayrecurring extends CRM_Core_Payment
             $eWAYRequest->EwayOption3($txtOptions);  //  255 Chars - ewayOption3
 
             $eWAYRequest->CustomerIPAddress ($params['ip_address']);
-            $eWAYRequest->CustomerBillingCountry($params['country']);
 
             // Allow further manipulation of the arguments via custom hooks ..
             CRM_Utils_Hook::alterPaymentProcessorParams( $this, $params, $eWAYRequest );
