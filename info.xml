@@ -26,21 +26,4 @@
     <civix>
     <namespace>CRM/Ewayrecurring</namespace>
   </civix>
-  <typeInfo>
-   <userNameLabel>Username</userNameLabel>
-   <passwordLabel>Password</passwordLabel>
-   <signatureLabel></signatureLabel>
-   <subjectLabel>Customer ID</subjectLabel>
-   <urlSiteDefault>https://www.eway.com.au/gateway_cvn/xmlpayment.asp</urlSiteDefault>
-   <urlApiDefault></urlApiDefault>
-   <urlRecurDefault>https://www.eway.com.au/gateway/ManagedPaymentService/managedCreditCardPayment.asmx?WSDL</urlRecurDefault>
-   <urlSiteTestDefault>https://www.eway.com.au/gateway_cvn/xmltest/testpage.asp</urlSiteTestDefault>
-   <urlApiTestDefault></urlApiTestDefault>
-   <urlRecurTestDefault>https://www.eway.com.au/gateway/ManagedPaymentService/test/managedcreditcardpayment.asmx?WSDL</urlRecurTestDefault>
-   <urlButtonDefault></urlButtonDefault>
-   <urlButtonTestDefault></urlButtonTestDefault>
-   <billingMode>form</billingMode>
-   <isRecur>1</isRecur>
-   <paymentType>1</paymentType>
-  </typeInfo>
 </extension>

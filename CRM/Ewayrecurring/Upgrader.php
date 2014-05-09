@@ -6,14 +6,12 @@
 class CRM_Ewayrecurring_Upgrader extends CRM_Ewayrecurring_Upgrader_Base {
 
   // By convention, functions that look like "function upgrade_NNNN()" are
-  // upgrade tasks. They are executed in order (like Drupal's hook_update_N).
+  /* upgrade tasks. They are executed in order (like Drupal's hook_update_N).
 
   public function install() {
-    $this->executeSqlFile('sql/install.sql');
   }
 
   public function uninstall() {
-   $this->executeSqlFile('sql/uninstall.sql');
   }
   /**
    * Example: Run an external SQL script when the module is installed
@@ -42,13 +40,14 @@ class CRM_Ewayrecurring_Upgrader extends CRM_Ewayrecurring_Upgrader_Base {
    *
    * @return TRUE on success
    * @throws Exception
-   *
+   */
   public function upgrade_4200() {
     $this->ctx->log->info('Applying update 4200');
-    CRM_Core_DAO::executeQuery('UPDATE foo SET bar = "whiz"');
-    CRM_Core_DAO::executeQuery('DELETE FROM bang WHERE willy = wonka(2)');
+    CRM_Core_DAO::executeQuery('UPDATE civicrm_payment_processor_type SET class_name = "Payment_Ewayrecurring" WHERE class_name = "com.chrischinchilla.ewayrecurring"');
+    CRM_Core_DAO::executeQuery('UPDATE civicrm_payment_processor SET class_name = "Payment_Ewayrecurring" WHERE class_name = "com.chrischinchilla.ewayrecurring"');
+
     return TRUE;
-  } // */
+  }
 
 
   /**
