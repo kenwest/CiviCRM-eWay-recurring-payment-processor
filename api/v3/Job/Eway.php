@@ -158,7 +158,7 @@ function civicrm_api3_job_eway($params) {
  */
 function get_eway_token_clients() {
   $processors = civicrm_api3('payment_processor', 'get', array(
-    'class_name' => 'com.chrischinchilla.ewayrecurring')
+    'class_name' => 'Payment_Ewayrecurring')
   );
   $result = array();
   foreach ($processors['values'] as $id => $processor) {
