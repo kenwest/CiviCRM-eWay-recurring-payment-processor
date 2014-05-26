@@ -158,7 +158,7 @@ function civicrm_api3_job_eway($params) {
  */
 function get_eway_token_clients() {
   $processors = civicrm_api3('payment_processor', 'get', array(
-    'class_name' => 'Payment_Ewayrecurring')
+    'class_name' => 'com.chrischinchilla.ewayrecurring')
   );
   $result = array();
   foreach ($processors['values'] as $id => $processor) {
@@ -483,7 +483,7 @@ function send_receipt_email($contribution_id)
 
     $processor = array();
     $mode = empty($contribution->is_test) ? 'live' : 'test';
-    $eWayProcessor = new com_chrischinchilla_ewayrecurring($mode, $processor);
+    $eWayProcessor = new Payment_Ewayrecurring($mode, $processor);
 
 
     if ( $eWayProcessor->isSupported('cancelSubscription')) {
