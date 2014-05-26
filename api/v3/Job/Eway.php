@@ -483,7 +483,7 @@ function send_receipt_email($contribution_id)
 
     $processor = array();
     $mode = empty($contribution->is_test) ? 'live' : 'test';
-    $eWayProcessor = new com_chrischinchilla_ewayrecurring($mode, $processor);
+    $eWayProcessor = new Payment_Ewayrecurring($mode, $processor);
 
 
     if ( $eWayProcessor->isSupported('cancelSubscription')) {
