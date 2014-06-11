@@ -165,9 +165,9 @@ function get_eway_token_clients() {
  * find the latest contribution belonging to the recurring contribution so that we
  * can extract some info for cloning, like source etc
  *
- * @param $recur_id
+ * @param int $recur_id
  *
- * @return a contribution object
+ * @return CRM_Contribute_BAO_Contribution contribution object
  */
 function get_first_contribution_from_recurring($recur_id) {
   $contributions = new CRM_Contribute_BAO_Contribution();
@@ -326,9 +326,9 @@ function process_eway_payment($soap_client, $managed_customer_id, $amount_in_cen
  *
  * Marks a contribution as complete
  *
- * @param object $contribution
+ * @param CRM_Contribute_BAO_Contribution $contribution
  *          The contribution to mark as complete
- * @return object The contribution object
+ * @return CRM_Contribute_BAO_Contribution The contribution object
  */
 function complete_contribution($contribution) {
   $contributionStatus = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
@@ -509,4 +509,5 @@ function _versionAtLeast($version) {
   if (version_compare($codeVersion[0] . '.' . $codeVersion[1], $version) >= 0) {
     return TRUE;
   }
+  return FALSE;
 }
