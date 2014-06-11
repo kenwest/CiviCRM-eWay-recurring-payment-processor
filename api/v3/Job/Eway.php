@@ -142,7 +142,7 @@ function civicrm_api3_job_eway($params) {
 }
 
 /**
- * get_eway_token_clients
+ * get_eWay_token_clients
  *
  * Find the eWAY recurring payment processors
  *
@@ -165,6 +165,8 @@ function get_eway_token_clients() {
  * find the latest contribution belonging to the recurring contribution so that we
  * can extract some info for cloning, like source etc
  *
+ * @param $recur_id
+ *
  * @return a contribution object
  */
 function get_first_contribution_from_recurring($recur_id) {
@@ -185,6 +187,8 @@ function get_first_contribution_from_recurring($recur_id) {
  * These are for newly created recurring contributions and should
  * generally be processed the same day they're created. These do not
  * include the regularly processed recurring transactions.
+ *
+ * @param $eway_token_clients
  *
  * @return array An array of associative arrays containing contribution & contribution_recur objects
  */
@@ -222,6 +226,8 @@ function get_pending_recurring_contributions($eway_token_clients) {
  * get_scheduled_contributions
  *
  * Gets recurring contributions that are scheduled to be processed today
+ *
+ * @param $eway_token_clients
  *
  * @return array An array of contribution_recur objects
  */
@@ -281,7 +287,7 @@ function eway_token_client($gateway_url, $eway_customer_id, $username, $password
 }
 
 /**
- * process_eway_payment
+ * process_eWay_payment
  *
  * Processes an eWay token payment
  *
