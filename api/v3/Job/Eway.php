@@ -447,20 +447,16 @@ function send_receipt_email($contribution_id) {
     'isTest' => $contribution->is_test
   );
 
-  // TODO: Fix CRM_Core_Payment::subscriptionUrl()
-  //
-  // Currently that function fails to affix a checksum when the session's UserId
-  // is set, which is unfortunate since CiviCRM Jobs run with a user context for
-  // permissioning purposes.
-  //
-  // subscriptionUrl() just needs to check if the contactId associated with the
-  // subscription is equal to the userId, and if not, add a checksum.
-  //
-  // To work around this, I am temporarily setting the UserId to zero, and hoping
-  // there are no exceptions thrown.
-  $session = CRM_Core_Session::singleton();
-  $activeUser = $session->get('userID');
-  $session->set('userID', 0);
+  if (!_versionAtLeast(4.4)) {
+    // Prior to v4.5, CRM_Core_Payment::subscriptionUrl() failed to affix a
+    // checksum when the session's UserId is set, which is unfortunate since
+    // CiviCRM Jobs run with a user context for permissioning purposes.
+    //
+    // To work around this, temporarily set the UserId to zero.
+    $session = CRM_Core_Session::singleton();
+    $activeUser = $session->get('userID');
+    $session->set('userID', 0);
+  }
 
   $processor = array();
   $mode = empty($contribution->is_test) ? 'live' : 'test';
@@ -476,9 +472,11 @@ function send_receipt_email($contribution_id) {
     $params['tplParams']['updateSubscriptionUrl'] = $eWayProcessor->subscriptionURL($contribution->contribution_recur_id, 'recur', 'update');
   }
 
-  // TODO: Fix CRM_Core_Payment::subscriptionUrl()
-  // See comment above.
-  $session->set('userID', $activeUser);
+  if (!_versionAtLeast(4.4)) {
+    // See comment re CRM_Core_Payment::subscriptionUrl(), above.
+    $session->set('userID', $activeUser);
+  }
+
   return _sendReceipt($params);
 }
 
