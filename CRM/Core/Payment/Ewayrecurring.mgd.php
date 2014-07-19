@@ -24,7 +24,7 @@ return array (
       'is_recur' => 1,
       'url_recur_default' => 'https://www.eway.com.au/gateway/ManagedPaymentService/managedCreditCardPayment.asmx?WSDL',
       'url_site_test_default' => 'https://www.eway.com.au/gateway_cvn/xmltest/testpage.asp',
-      'urlRecurTestDefault' => 'https://www.eway.com.au/gateway/ManagedPaymentService/test/managedcreditcardpayment.asmx?WSDL</urlRecurTestDefault',
+      'urlRecurTestDefault' => 'https://www.eway.com.au/gateway/ManagedPaymentService/test/managedcreditcardpayment.asmx?WSDL',
 
     ),
   ),
