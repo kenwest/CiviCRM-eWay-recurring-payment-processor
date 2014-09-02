@@ -210,8 +210,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment
              */
         }
         // This is a one off payment, most of this is lifted straight from the original code, so I wont document it.
-        else
-        {
+        else {
             $gateway_URL    = $this->_paymentProcessor['url_site'];    // eWAY Gateway URL
             $eWAYRequest  = new GatewayRequest;
 
@@ -584,4 +583,4 @@ The CiviCRM eWAY Payment Processor Module
         The code found in the eWayEmailprocessor should be here, but I was getting cron errors. These may have been fixed now and the code can be moved back into this function again.
     }
     */
-} // end class CRM_Core_Payment_eWAYRecurring
+}
