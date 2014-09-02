@@ -270,6 +270,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment
             $eWAYRequest->EwayOption1($txtOptions);  //  255 Chars - ewayOption1
             $eWAYRequest->EwayOption2($txtOptions);  //  255 Chars - ewayOption2
             $eWAYRequest->EwayOption3($txtOptions);  //  255 Chars - ewayOption3
+            $eWAYRequest->CustomerBillingCountry($params['country']);
 
             $eWAYRequest->CustomerIPAddress ($params['ip_address']);
 
