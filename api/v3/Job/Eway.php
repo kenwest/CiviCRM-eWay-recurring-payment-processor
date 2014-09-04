@@ -447,7 +447,7 @@ function send_receipt_email($contribution_id) {
     'isTest' => $contribution->is_test
   );
 
-  if (!_versionAtLeast(4.4)) {
+  if (!_versionAtLeast(4.5)) {
     // Prior to v4.5, CRM_Core_Payment::subscriptionUrl() failed to affix a
     // checksum when the session's UserId is set, which is unfortunate since
     // CiviCRM Jobs run with a user context for permissioning purposes.
@@ -472,7 +472,7 @@ function send_receipt_email($contribution_id) {
     $params['tplParams']['updateSubscriptionUrl'] = $eWayProcessor->subscriptionURL($contribution->contribution_recur_id, 'recur', 'update');
   }
 
-  if (!_versionAtLeast(4.4)) {
+  if (!_versionAtLeast(4.5)) {
     // See comment re CRM_Core_Payment::subscriptionUrl(), above.
     $session->set('userID', $activeUser);
   }
