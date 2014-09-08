@@ -33,16 +33,18 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment
     }
 
 
-
-    /**
-     * singleton function used to manage this object
-     *
-     * @param string $mode the mode of operation: live or test
-     *
-     * @return object
-     * @static
-     *
-     */
+  /**
+   * singleton function used to manage this object
+   *
+   * @param string $mode the mode of operation: live or test
+   *
+   * @param array $paymentProcessor
+   * @param null $paymentForm
+   * @param bool $force
+   *
+   * @return object
+   * @static
+   */
     static function &singleton($mode, &$paymentProcessor, &$paymentForm = NULL, $force = FALSE)
     {
         $processorName = $paymentProcessor['name'];

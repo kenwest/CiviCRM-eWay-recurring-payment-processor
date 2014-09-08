@@ -6,6 +6,8 @@ require_once 'nusoap.php';
 
 /**
  * Implementation of hook_civicrm_config
+ *
+ * @param $config
  */
 function ewayrecurring_civicrm_config(&$config) {
   _ewayrecurring_civix_civicrm_config($config);
@@ -66,6 +68,8 @@ function ewayrecurring_civicrm_upgrade($op, CRM_Queue_Queue $queue = NULL) {
  *
  * Generate a list of entities to create/deactivate/delete when this module
  * is installed, disabled, uninstalled.
+ *
+ * @param $entities
  */
 function ewayrecurring_civicrm_managed(&$entities) {
   try {
