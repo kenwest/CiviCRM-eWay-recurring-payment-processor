@@ -53,33 +53,7 @@ function civicrm_api3_job_eway($params) {
 
   $apiResult[] = "Processing " . count($pending_contributions) . " pending contributions";
   foreach ($pending_contributions as $pending_contribution) {
-    // Process payment
-    $apiResult[] = "Processing payment for pending contribution ID: " . $pending_contribution['contribution']->id;
-    $amount_in_cents = str_replace('.', '', $pending_contribution['contribution']->total_amount);
-    $result = process_eway_payment(
-      $eway_token_clients[$pending_contribution['contribution_recur']->payment_processor_id],
-      $pending_contribution['contribution_recur']->processor_id, $amount_in_cents,
-      $pending_contribution['contribution']->invoice_id, $pending_contribution['contribution']->source
-  );
-
-    // Bail if the transaction fails
-    if ($result['ewayTrxnStatus'] != 'True') {
-      $apiResult[] = 'ERROR: Failed to process transaction for managed customer: ' . $pending_contribution['contribution_recur']->processor_id;
-      $apiResult[] = 'eWay response: ' . $result['faultstring'];
-      continue;
-    }
-    $apiResult[] = "Successfully processed payment for pending contribution ID: " . $pending_contribution['contribution']->id;
-
-    $apiResult[] = "Marking contribution as complete";
-    $pending_contribution['contribution']->trxn_id = $result['ewayTrxnNumber'];
-    complete_contribution($pending_contribution['contribution']);
-
-    $apiResult[] = "Sending receipt";
-    send_receipt_email($pending_contribution['contribution']->id);
-
-    $apiResult[] = "Updating recurring contribution";
-    update_recurring_contribution($pending_contribution['contribution_recur']);
-    $apiResult[] = "Finished processing contribution ID: " . $pending_contribution['contribution']->id;
+    $apiResult = $apiResult + _civicrm_api3_job_eway_process_pending_contributions($eway_token_clients, $pending_contribution);
   }
 
   // Process today's scheduled contributions
@@ -139,6 +113,39 @@ function civicrm_api3_job_eway($params) {
   }
 
   return civicrm_api3_create_success($apiResult, $params);
+}
+
+/**
+ *
+ */
+function _civicrm_api3_job_eway_process_pending_contributions($eway_token_clients, $pending_contribution) {
+  $apiResult = array();
+  // Process payment
+  $apiResult[] = "Processing payment for pending contribution ID: " . $pending_contribution['contribution']->id;
+  $amount_in_cents = str_replace('.', '', $pending_contribution['contribution']->total_amount);
+
+  $result = process_eway_payment(
+    $eway_token_clients[$pending_contribution['contribution_recur']->payment_processor_id],
+    $pending_contribution['contribution_recur']->processor_id, $amount_in_cents,
+    $pending_contribution['contribution']->invoice_id, $pending_contribution['contribution']->source
+  );
+
+  // Bail if the transaction fails
+  if ($result['ewayTrxnStatus'] != 'True') {
+    $apiResult[] = 'ERROR: Failed to process transaction for managed customer: ' . $pending_contribution['contribution_recur']->processor_id;
+    $apiResult[] = 'eWay response: ' . $result['faultstring'];
+    return $apiResult;
+  }
+  $apiResult[] = "Successfully processed payment for pending contribution ID: " . $pending_contribution['contribution']->id;
+
+  $apiResult[] = "Marking contribution as complete";
+  $pending_contribution['contribution']->trxn_id = $result['ewayTrxnNumber'];
+  complete_contribution($pending_contribution['contribution']);
+
+  $apiResult[] = "Updating recurring contribution";
+  update_recurring_contribution($pending_contribution['contribution_recur']);
+  $apiResult[] = "Finished processing contribution ID: " . $pending_contribution['contribution']->id;
+  return $apiResult;
 }
 
 /**
@@ -349,17 +356,11 @@ function process_eway_payment($soap_client, $managed_customer_id, $amount_in_cen
  * @return CRM_Contribute_BAO_Contribution The contribution object
  */
 function complete_contribution($contribution) {
-  $contributionStatus = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
-
-  // Mark the contribution as complete
-  $completed = new CRM_Contribute_BAO_Contribution();
-  $completed->id = $contribution->id;
-  $completed->find(true);
-  $completed->trxn_id = $contribution->trxn_id;
-  $completed->contribution_status_id = array_search('Completed', $contributionStatus);
-  $completed->receive_date = CRM_Utils_Date::isoToMysql(date('Y-m-d H:i:s'));
-
-  return $completed->save();
+  civicrm_api3('contribution', 'completetransaction', array(
+    'id' => $contribution->id,
+    'trxn_id' => $contribution->trxn_id
+  ));
+  return $contribution;
 }
 
 /**
