@@ -46,7 +46,7 @@ function civicrm_api3_job_eway($params) {
   $contributionStatus = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
 
   // Create eWay token clients
-  $eway_token_clients = get_eway_token_clients();
+  $eway_token_clients = get_eway_token_clients($params['domain_id']);
 
   // Get pending contributions
   $pending_contributions = get_pending_recurring_contributions($eway_token_clients);
@@ -142,16 +142,34 @@ function civicrm_api3_job_eway($params) {
 }
 
 /**
+ * alter metadata
+ * @param $params
+ */
+function _civicrm_api3_job_eway_spec(&$params) {
+  $params['domain_id']['api.default'] = CRM_Core_Config::domainID();
+  $params['domain_id']['type'] = CRM_Utils_Type::T_INT;
+  $params['domain_id']['title'] = ts('Domain');
+}
+
+/**
  * get_eWay_token_clients
  *
  * Find the eWAY recurring payment processors
  *
+ * @param $domainID
+ *
+ * @throws CiviCRM_API3_Exception
  * @return array An associative array of Processor Id => eWAY Token Client
  */
-function get_eway_token_clients() {
-  $processors = civicrm_api3('payment_processor', 'get', array(
+function get_eway_token_clients($domainID) {
+  $params = array(
     'class_name' => 'Payment_Ewayrecurring'
-  ));
+  );
+  if (!empty($domainID)) {
+    $params['domain_id'] = $domainID;
+  }
+
+  $processors = civicrm_api3('payment_processor', 'get', $params);
   $result = array();
   foreach ($processors['values'] as $id => $processor) {
     $result[$id] = eway_token_client($processor['url_recur'], $processor['subject'], $processor['user_name'], $processor['password']);
