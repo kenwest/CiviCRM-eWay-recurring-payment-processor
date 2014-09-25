@@ -541,17 +541,25 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment
     if ($contact_id && $user_id != $contact_id) {
       return $url . '&cs=' . CRM_Contact_BAO_Contact_Utils::generateChecksum($contact_id, NULL, 'inf');
     }
+    return $url;
+  }
 
-    function getContactID($entity, $entityID) {
-      if ($entity == 'recur') {
-        $entity = 'contribution_recur';
-      }
-      try {
-        return civicrm_api3($entity, 'getvalue', array('id' => $entityID, 'return' => 'contact_id'));
-      }
-      catch (Exception $e) {
-        return 0;
-      }
+  /**
+   * get relevant contact ID
+   * @param $entity
+   * @param $entityID
+   *
+   * @return array|int
+   */
+  function getContactID($entity, $entityID) {
+    if ($entity == 'recur') {
+      $entity = 'contribution_recur';
+    }
+    try {
+      return civicrm_api3($entity, 'getvalue', array('id' => $entityID, 'return' => 'contact_id'));
+    }
+    catch (Exception $e) {
+      return 0;
     }
   }
 
