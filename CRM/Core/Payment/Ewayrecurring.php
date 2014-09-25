@@ -33,16 +33,18 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment
     }
 
 
-
-    /**
-     * singleton function used to manage this object
-     *
-     * @param string $mode the mode of operation: live or test
-     *
-     * @return object
-     * @static
-     *
-     */
+  /**
+   * singleton function used to manage this object
+   *
+   * @param string $mode the mode of operation: live or test
+   *
+   * @param array $paymentProcessor
+   * @param null $paymentForm
+   * @param bool $force
+   *
+   * @return object
+   * @static
+   */
     static function &singleton($mode, &$paymentProcessor, &$paymentForm = NULL, $force = FALSE)
     {
         $processorName = $paymentProcessor['name'];
@@ -210,8 +212,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment
              */
         }
         // This is a one off payment, most of this is lifted straight from the original code, so I wont document it.
-        else
-        {
+        else {
             $gateway_URL    = $this->_paymentProcessor['url_site'];    // eWAY Gateway URL
             $eWAYRequest  = new GatewayRequest;
 
@@ -270,6 +271,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment
             $eWAYRequest->EwayOption1($txtOptions);  //  255 Chars - ewayOption1
             $eWAYRequest->EwayOption2($txtOptions);  //  255 Chars - ewayOption2
             $eWAYRequest->EwayOption3($txtOptions);  //  255 Chars - ewayOption3
+            $eWAYRequest->CustomerBillingCountry($params['country']);
 
             $eWAYRequest->CustomerIPAddress ($params['ip_address']);
 
@@ -524,6 +526,37 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment
         return TRUE;
     }
 
+  /**
+   * @param null $entityID
+   * @param null $entity
+   * @param string $action
+   *
+   * @return string
+   */
+  function subscriptionURL($entityID = NULL, $entity = NULL, $action = 'cancel') {
+    $url = parent::subscriptionURL($entityID = NULL, $entity = NULL, $action = 'cancel');
+    if (stristr($url, '&cs=')) {
+      return $url;
+    }
+    $user_id = CRM_Core_Session::singleton()->get('userID');
+    $contact_id = $this->getContactID($entity, $entityID);
+    if ($contact_id && $user_id != $contact_id) {
+      return $url . '&cs=' . CRM_Contact_BAO_Contact_Utils::generateChecksum($contact_id, NULL, 'inf');
+    }
+
+    function getContactID($entity, $entityID) {
+      if ($entity == 'recur') {
+        $entity = 'contribution_recur';
+      }
+      try {
+        return civicrm_api3($entity, 'getvalue', array('id' => $entityID, 'return' => 'contact_id'));
+      }
+      catch (Exception $e) {
+        return 0;
+      }
+    }
+  }
+
     function send_alert_email($p_eWAY_tran_num, $p_trxn_out, $p_trxn_back, $p_request, $p_response)
     {
         // Initialization call is required to use CiviCRM APIs.
@@ -583,4 +616,4 @@ The CiviCRM eWAY Payment Processor Module
         The code found in the eWayEmailprocessor should be here, but I was getting cron errors. These may have been fixed now and the code can be moved back into this function again.
     }
     */
-} // end class CRM_Core_Payment_eWAYRecurring
+}
