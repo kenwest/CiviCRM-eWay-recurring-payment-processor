@@ -33,11 +33,6 @@
  * @throws API_Exception
  */
 function civicrm_api3_job_eway($params) {
-
-  // TODO: Remove hacky hardcoded constants
-  // The title used for receipt messages
-  define('RECEIPT_SUBJECT_TITLE', 'Regular Donation');
-
   require_once 'nusoap.php';
 
   $apiResult = array();
@@ -402,84 +397,7 @@ function update_recurring_contribution($current_recur) {
  * @return bool Success or failure
  */
 function send_receipt_email($contribution_id) {
-  // @todo there is actually an api contribution.sendconfirmation which is supposed to do all of this
-  // test the api & potentially replace this function with a call to that api
-  $contribution = new CRM_Contribute_BAO_Contribution();
-  $contribution->id = $contribution_id;
-  $contribution->find(true);
-
-  list($name, $email) = CRM_Contact_BAO_Contact_Location::getEmailDetails($contribution->contact_id);
-
-  $domainValues = CRM_Core_BAO_Domain::getNameAndEmail();
-  $receiptFrom = "$domainValues[0] <$domainValues[1]>";
-  $receiptFromEmail = $domainValues[1];
-
-  $page = new CRM_Contribute_BAO_ContributionPage();
-  $page->id = $contribution->contribution_page_id;
-  $page->find(true);
-  if (isset($page->receipt_text)) {
-    $receipt_text = $page->receipt_text;
-  }
-  else {
-    $receipt_text = 'Thank you for your contribution.';
-  }
-
-  $params = array(
-    'groupName' => 'msg_tpl_workflow_contribution',
-    'valueName' => 'contribution_online_receipt',
-    'contactId' => $contribution->contact_id,
-    'tplParams' => array(
-      'contributeMode' => 'directIPN',
-      'receiptFromEmail' => $receiptFromEmail,
-      'amount' => $contribution->total_amount,
-      'title' => RECEIPT_SUBJECT_TITLE,
-      'is_recur' => true,
-      'billingName' => $name,
-      'email' => $email,
-      'trxn_id' => $contribution->trxn_id,
-      'receive_date' => $contribution->receive_date,
-      'is_monetary' => true,
-      'receipt_text' => $receipt_text
-    ),
-    'from' => $receiptFrom,
-    'toName' => $name,
-    'toEmail' => $email,
-    'isTest' => $contribution->is_test
-  );
-
-  // TODO: Fix CRM_Core_Payment::subscriptionUrl()
-  //
-  // Currently that function fails to affix a checksum when the session's UserId
-  // is set, which is unfortunate since CiviCRM Jobs run with a user context for
-  // permissioning purposes.
-  //
-  // subscriptionUrl() just needs to check if the contactId associated with the
-  // subscription is equal to the userId, and if not, add a checksum.
-  //
-  // To work around this, I am temporarily setting the UserId to zero, and hoping
-  // there are no exceptions thrown.
-  $session = CRM_Core_Session::singleton();
-  $activeUser = $session->get('userID');
-  $session->set('userID', 0);
-
-  $processor = array();
-  $mode = empty($contribution->is_test) ? 'live' : 'test';
-  $eWayProcessor = new CRM_Core_Payment_Ewayrecurring($mode, $processor);
-
-  if ($eWayProcessor->isSupported('cancelSubscription')) {
-    $params['tplParams']['cancelSubscriptionUrl'] = $eWayProcessor->subscriptionURL($contribution->contribution_recur_id, 'recur');
-  }
-  if ($eWayProcessor->isSupported('updateSubscriptionBillingInfo')) {
-    $params['tplParams']['updateSubscriptionBillingUrl'] = $eWayProcessor->subscriptionURL($contribution->contribution_recur_id, 'recur', 'billing');
-  }
-  if ($eWayProcessor->isSupported('changeSubscriptionAmount')) {
-    $params['tplParams']['updateSubscriptionUrl'] = $eWayProcessor->subscriptionURL($contribution->contribution_recur_id, 'recur', 'update');
-  }
-
-  // TODO: Fix CRM_Core_Payment::subscriptionUrl()
-  // See comment above.
-  $session->set('userID', $activeUser);
-  return _sendReceipt($params);
+  civicrm_api3('contribution', 'sendconfirmation', array('id' => $contribution_id));
 }
 
 /**
