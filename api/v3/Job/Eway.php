@@ -48,7 +48,7 @@ function civicrm_api3_job_eway($params) {
 
   $apiResult[] = "Processing " . count($pending_contributions) . " pending contributions";
   foreach ($pending_contributions as $pending_contribution) {
-    $apiResult = $apiResult + _civicrm_api3_job_eway_process_pending_contributions($eway_token_clients, $pending_contribution);
+    $apiResult = $apiResult + _civicrm_api3_job_eway_process_contributions($eway_token_clients, $pending_contribution);
   }
 
   // Process today's scheduled contributions
@@ -113,33 +113,33 @@ function civicrm_api3_job_eway($params) {
 /**
  *
  */
-function _civicrm_api3_job_eway_process_pending_contributions($eway_token_clients, $pending_contribution) {
+function _civicrm_api3_job_eway_process_contributions($eway_token_clients, $instance) {
   $apiResult = array();
   // Process payment
-  $apiResult[] = "Processing payment for pending contribution ID: " . $pending_contribution['contribution']->id;
-  $amount_in_cents = str_replace('.', '', $pending_contribution['contribution']->total_amount);
+  $apiResult[] = "Processing payment for " . $instance['type'] . " contribution ID: " . $instance['contribution']->id;
+  $amount_in_cents = str_replace('.', '', $instance['contribution']->total_amount);
 
   $result = process_eway_payment(
-    $eway_token_clients[$pending_contribution['contribution_recur']->payment_processor_id],
-    $pending_contribution['contribution_recur']->processor_id, $amount_in_cents,
-    $pending_contribution['contribution']->invoice_id, $pending_contribution['contribution']->source
+    $eway_token_clients[$instance['contribution_recur']->payment_processor_id],
+    $instance['contribution_recur']->processor_id, $amount_in_cents,
+    $instance['contribution']->invoice_id, $instance['contribution']->source
   );
 
   // Bail if the transaction fails
   if ($result['ewayTrxnStatus'] != 'True') {
-    $apiResult[] = 'ERROR: Failed to process transaction for managed customer: ' . $pending_contribution['contribution_recur']->processor_id;
+    $apiResult[] = 'ERROR: Failed to process transaction for managed customer: ' . $instance['contribution_recur']->processor_id;
     $apiResult[] = 'eWay response: ' . $result['faultstring'];
     return $apiResult;
   }
-  $apiResult[] = "Successfully processed payment for pending contribution ID: " . $pending_contribution['contribution']->id;
+  $apiResult[] = "Successfully processed payment for " . $instance['type'] . " contribution ID: " . $instance['contribution']->id;
 
   $apiResult[] = "Marking contribution as complete";
-  $pending_contribution['contribution']->trxn_id = $result['ewayTrxnNumber'];
-  complete_contribution($pending_contribution['contribution']);
+  $instance['contribution']->trxn_id = $result['ewayTrxnNumber'];
+  complete_contribution($instance['contribution']);
 
   $apiResult[] = "Updating recurring contribution";
-  update_recurring_contribution($pending_contribution['contribution_recur']);
-  $apiResult[] = "Finished processing contribution ID: " . $pending_contribution['contribution']->id;
+  update_recurring_contribution($instance['contribution_recur']);
+  $apiResult[] = "Finished processing contribution ID: " . $instance['contribution']->id;
   return $apiResult;
 }
 
@@ -234,6 +234,7 @@ function get_pending_recurring_contributions($eway_token_clients) {
 
     if ($contribution->find(true)) {
       $result[] = array(
+        'type' => 'Pending',
         'contribution' => clone ($contribution),
         'contribution_recur' => clone ($recurring)
       );
