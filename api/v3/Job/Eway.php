@@ -55,56 +55,8 @@ function civicrm_api3_job_eway($params) {
   $scheduled_contributions = get_scheduled_contributions($eway_token_clients);
 
   $apiResult[] = "Processing " . count($scheduled_contributions) . " scheduled contributions";
-  foreach ($scheduled_contributions as $contribution) {
-    // Process payment
-    $apiResult[] = "Processing payment for scheduled recurring contribution ID: " . $contribution->id;
-    $amount_in_cents = str_replace('.', '', $contribution->amount);
-    $result = process_eway_payment($eway_token_clients[$contribution->payment_processor_id], $contribution->processor_id, $amount_in_cents, $contribution->invoice_id, '');
-
-    // Bail if the transaction fails
-    if ($result['ewayTrxnStatus'] != 'True') {
-      $apiResult[] = 'ERROR: Failed to process transaction for managed customer: ' . $contribution->processor_id;
-      $apiResult[] = 'eWay response: ' . $result->ewayTrxnError;
-      // TODO: Mark transaction as failed
-      continue;
-    }
-    $apiResult[] = "Successfully processed payment for scheduled recurring contribution ID: " . $contribution->id;
-
-    $past_contribution = get_first_contribution_from_recurring($contribution->id);
-
-    $apiResult[] = "Creating contribution record";
-    $new_contribution_record = new CRM_Contribute_BAO_Contribution();
-    $new_contribution_record->contact_id = $contribution->contact_id;
-    $new_contribution_record->receive_date = CRM_Utils_Date::isoToMysql(date('Y-m-d H:i:s'));
-    $new_contribution_record->total_amount = $contribution->amount;
-    $new_contribution_record->non_deductible_amount = $contribution->amount;
-    $new_contribution_record->net_amount = $contribution->amount;
-    $new_contribution_record->trxn_id = $result['ewayTrxnNumber'];
-    $new_contribution_record->invoice_id = md5(uniqid(rand(), TRUE));
-    $new_contribution_record->contribution_recur_id = $contribution->id;
-    $new_contribution_record->contribution_status_id = array_search('Completed', $contributionStatus);
-    if (_versionAtLeast(4.4)) {
-      $new_contribution_record->financial_type_id = $contribution->financial_type_id;
-    }
-    else {
-      $new_contribution_record->contribution_type_id = $contribution->contribution_type_id;
-    }
-    $new_contribution_record->currency = $contribution->currency;
-    // copy info from previous contribution belonging to the same recurring contribution
-    if ($past_contribution != null) {
-      $new_contribution_record->contribution_page_id = $past_contribution->contribution_page_id;
-      $new_contribution_record->payment_instrument_id = $past_contribution->payment_instrument_id;
-      $new_contribution_record->source = $past_contribution->source;
-      $new_contribution_record->address_id = $past_contribution->address_id;
-    }
-    $new_contribution_record->save();
-
-    $apiResult[] = "Sending receipt";
-    send_receipt_email($new_contribution_record->id);
-
-    $apiResult[] = "Updating recurring contribution";
-    update_recurring_contribution($contribution);
-    $apiResult[] = "Finished processing recurring contribution ID: " . $contribution->id;
+  foreach ($scheduled_contributions as $scheduled_contribution) {
+    $apiResult = $apiResult + _civicrm_api3_job_eway_process_contributions($eway_token_clients, $scheduled_contribution);
   }
 
   return civicrm_api3_create_success($apiResult, $params);
@@ -274,7 +226,39 @@ function get_scheduled_contributions($eway_token_clients) {
   $result = array();
 
   while ( $scheduled_today->fetch() ) {
-    $result[] = clone ($scheduled_today);
+    $past_contribution = get_first_contribution_from_recurring($scheduled_today->id);
+
+    $new_contribution_record = new CRM_Contribute_BAO_Contribution();
+    $new_contribution_record->contact_id = $scheduled_today->contact_id;
+    $new_contribution_record->receive_date = CRM_Utils_Date::isoToMysql(date('Y-m-d H:i:s'));
+    $new_contribution_record->total_amount = $scheduled_today->amount;
+    $new_contribution_record->non_deductible_amount = $scheduled_today->amount;
+    $new_contribution_record->net_amount = $scheduled_today->amount;
+    $new_contribution_record->invoice_id = md5(uniqid(rand(), TRUE));
+    $new_contribution_record->contribution_recur_id = $scheduled_today->id;
+    $new_contribution_record->contribution_status_id = array_search('Pending', $contributionStatus);
+    if (_versionAtLeast(4.4)) {
+      $new_contribution_record->financial_type_id = $scheduled_today->financial_type_id;
+    }
+    else {
+      $new_contribution_record->contribution_type_id = $scheduled_today->contribution_type_id;
+    }
+    $new_contribution_record->currency = $scheduled_today->currency;
+
+    // copy info from previous contribution belonging to the same recurring contribution
+    if ($past_contribution != null) {
+      $new_contribution_record->contribution_page_id = $past_contribution->contribution_page_id;
+      $new_contribution_record->payment_instrument_id = $past_contribution->payment_instrument_id;
+      $new_contribution_record->source = $past_contribution->source;
+      $new_contribution_record->address_id = $past_contribution->address_id;
+    }
+    $new_contribution_record->save();
+
+    $result[] = array(
+      'type' => 'Scheduled',
+      'contribution' => clone ($new_contribution_record),
+      'contribution_recur' => clone ($scheduled_today)
+    );
   }
 
   return $result;
