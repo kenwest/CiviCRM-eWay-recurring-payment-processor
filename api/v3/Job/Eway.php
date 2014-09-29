@@ -90,6 +90,7 @@ function _civicrm_api3_job_eway_process_contribution($eway_token_clients, $insta
     $apiResult[] = 'eWAY response: ' . $result['faultstring'];
     $apiResult[] = "Marking contribution as failed";
     fail_contribution($instance['contribution']);
+    $instance['contribution_recur']->failure_count += 1;
   }
 
   // Update the recurring transaction
@@ -389,6 +390,7 @@ function update_recurring_contribution($current_recur) {
   $updated_recur->id = $current_recur->id;
   $updated_recur->contribution_status_id = array_search('In Progress', $contributionStatus);
   $updated_recur->modified_date = CRM_Utils_Date::isoToMysql(date('Y-m-d H:i:s'));
+  $updated_recur->failure_count = $current_recur->failure_count;
 
   /*
    * Update the next date to schedule a contribution. If all installments complete, mark the recurring contribution as complete
