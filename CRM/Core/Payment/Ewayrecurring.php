@@ -365,7 +365,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment
             //----------------------------------------------------------------------------------------------------
             // See if we got an OK result - if not tell 'em and bail out
             //----------------------------------------------------------------------------------------------------
-            if ( self::isError( $eWAYResponse ) ) {
+            if ( self::isError($eWAYResponse ) ) {
                 $eWayTrxnError = $eWAYResponse->Error();
 
                 if (substr($eWayTrxnError, 0, 6) == "Error:") {
@@ -428,7 +428,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment
    * This function checks the eWAY response status - returning a boolean false if status != 'true'
    ************************************************************************************************
    *
-   * @param $response
+   * @param GatewayResponse $response
    *
    * @return bool
    */
@@ -442,9 +442,15 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment
         return false;
     }
 
-    /**************************************************
-     * Produces error message and returns from class
-     **************************************************/
+  /**************************************************
+   * Produces error message and returns from class
+   *************************************************
+   *
+   * @param null $errorCode
+   * @param null $errorMessage
+   *
+   * @return object
+   */
     function &errorExit ( $errorCode = null, $errorMessage = null )
     {
         $e =& CRM_Core_Error::singleton( );
@@ -516,16 +522,20 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment
    *
    * @return bool
    */
-  function cancelSubscription(&$message = '', $params = array() ) {
+  function cancelSubscription($message = '', $params = array() ) {
         return TRUE;
     }
-
-    /**
-     * All details about recurring contributions are maintained in CiviCRM, and
-     * eWAY only records the Token Customer and completed contributions. Given
-     * this, we can provide a do-nothing implementation of 'changeSubscriptionAmount'
-     */
-    function changeSubscriptionAmount(&$message = '', $params = array() ) {
+  /**
+   * All details about recurring contributions are maintained in CiviCRM, and
+   * eWAY only records the Token Customer and completed contributions. Given
+   * this, we can provide a do-nothing implementation of 'changeSubscriptionAmount'
+   *
+   * @param string $message
+   * @param array $params
+   *
+   * @return bool
+   */
+    function changeSubscriptionAmount($message = '', $params = array() ) {
         return TRUE;
     }
 
@@ -568,6 +578,13 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment
     }
   }
 
+  /**
+   * @param $p_eWAY_tran_num
+   * @param $p_trxn_out
+   * @param $p_trxn_back
+   * @param $p_request
+   * @param $p_response
+   */
     function send_alert_email($p_eWAY_tran_num, $p_trxn_out, $p_trxn_back, $p_request, $p_response)
     {
         // Initialization call is required to use CiviCRM APIs.
