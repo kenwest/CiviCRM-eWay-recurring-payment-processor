@@ -522,7 +522,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment
    *
    * @return bool
    */
-  function cancelSubscription($message = '', $params = array() ) {
+  function cancelSubscription(&$message = '', $params = array() ) {
         return TRUE;
     }
   /**
