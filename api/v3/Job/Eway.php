@@ -84,6 +84,7 @@ function _civicrm_api3_job_eway_process_contribution($eway_token_clients, $insta
     $apiResult[] = "Marking contribution as complete";
     $instance['contribution']->trxn_id = $result['ewayTrxnNumber'];
     complete_contribution($instance['contribution']);
+    $instance['contribution_recur']->failure_count = 0;
   } else {
     $apiResult[] = "ERROR: failed to process payment for " . $instance['type'] . " contribution ID: " . $instance['contribution']->id;
     $apiResult[] = 'eWAY managed customer: ' . $instance['contribution_recur']->processor_id;
