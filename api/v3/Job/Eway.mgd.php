@@ -4,16 +4,16 @@
 // database as appropriate. For more details, see "hook_civicrm_managed" at:
 // http://wiki.civicrm.org/confluence/display/CRMDOC42/Hook+Reference
 return array (
-  0 => 
+  0 =>
   array (
     'name' => 'Cron:Job.Eway',
     'entity' => 'Job',
-    'params' => 
+    'params' =>
     array (
       'version' => 3,
       'name' => 'eWAY recurring payments',
       'description' => 'Process any recurring payments due today',
-      'run_frequency' => 'Daily',
+      'run_frequency' => 'Always',
       'api_entity' => 'Job',
       'api_action' => 'Eway',
       'parameters' => '',
