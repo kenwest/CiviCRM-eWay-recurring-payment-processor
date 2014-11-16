@@ -523,8 +523,9 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment
    * @return bool
    */
   function cancelSubscription(&$message = '', $params = array() ) {
-        return TRUE;
-    }
+    return TRUE;
+  }
+
   /**
    * All details about recurring contributions are maintained in CiviCRM, and
    * eWAY only records the Token Customer and completed contributions. Given
@@ -535,9 +536,9 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment
    *
    * @return bool
    */
-    function changeSubscriptionAmount($message = '', $params = array() ) {
-        return TRUE;
-    }
+  function changeSubscriptionAmount(&$message = '', $params = array() ) {
+    return TRUE;
+  }
 
   /**
    * @param null $entityID
