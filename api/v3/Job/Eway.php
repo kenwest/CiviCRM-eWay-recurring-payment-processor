@@ -37,9 +37,6 @@ function civicrm_api3_job_eway($params) {
 
   $apiResult = array();
 
-  // Get contribution status values
-  $contributionStatus = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
-
   // Create eWay token clients
   $eway_token_clients = get_eway_token_clients($params['domain_id']);
 
@@ -63,7 +60,9 @@ function civicrm_api3_job_eway($params) {
 }
 
 /**
- *
+ * @param array $eway_token_clients
+ * @param array $instance
+ * @return array
  */
 function _civicrm_api3_job_eway_process_contribution($eway_token_clients, $instance) {
   $apiResult = array();
@@ -124,7 +123,8 @@ function _civicrm_api3_job_eway_spec(&$params) {
  */
 function get_eway_token_clients($domainID) {
   $params = array(
-    'class_name' => 'Payment_Ewayrecurring'
+    'class_name' => 'Payment_Ewayrecurring',
+    'return' => 'id',
   );
   if (!empty($domainID)) {
     $params['domain_id'] = $domainID;
@@ -132,8 +132,8 @@ function get_eway_token_clients($domainID) {
 
   $processors = civicrm_api3('payment_processor', 'get', $params);
   $result = array();
-  foreach ($processors['values'] as $id => $processor) {
-    $result[$id] = eway_token_client($processor['url_recur'], $processor['subject'], $processor['user_name'], $processor['password']);
+  foreach (array_keys($processors['values']) as $id) {
+    $result[$id] = CRM_Core_Payment_EwayUtils::getClient($id);
   }
   return $result;
 }
@@ -269,33 +269,6 @@ function get_scheduled_contributions($eway_token_clients) {
   }
 
   return $result;
-}
-
-/**
- * eway_token_client
- *
- * Creates an eWay SOAP client to the eWay token API
- *
- * @param string $gateway_url
- *          URL of the gateway to connect to (could be the test or live gateway)
- * @param string $eway_customer_id
- *          Your eWay customer ID
- * @param string $username
- *          Your eWay business centre username
- * @param string $password
- *          Your eWay business centre password
- * @return object A SOAP client to the eWay token API
- */
-function eway_token_client($gateway_url, $eway_customer_id, $username, $password) {
-  // Set up SOAP client
-  $soap_client = new nusoap_client($gateway_url, false);
-  $soap_client->namespaces['man'] = 'https://www.eway.com.au/gateway/managedpayment';
-
-  // Set up SOAP headers
-  $headers = "<man:eWAYHeader><man:eWAYCustomerID>" . $eway_customer_id . "</man:eWAYCustomerID><man:Username>" . $username . "</man:Username><man:Password>" . $password . "</man:Password></man:eWAYHeader>";
-  $soap_client->setHeaders($headers);
-
-  return $soap_client;
 }
 
 /**
