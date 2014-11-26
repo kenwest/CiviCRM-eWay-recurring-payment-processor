@@ -549,7 +549,10 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment
    */
   function subscriptionURL($entityID = NULL, $entity = NULL, $action = 'cancel') {
     $url = parent::subscriptionURL($entityID, $entity, $action);
-    if (!isset($url) || stristr($url, '&cs=')) {
+    if (!isset($url)) {
+      return NULL;
+    }
+    if (stristr($url, '&cs=')) {
       return $url;
     }
     $user_id = CRM_Core_Session::singleton()->get('userID');
