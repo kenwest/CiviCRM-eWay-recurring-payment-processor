@@ -289,72 +289,12 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
       // Convert to XML and send the payment information
       //----------------------------------------------------------------------------------------------------
       $requestXML = $eWAYRequest->ToXML();
-
-      $submit = curl_init($gateway_URL);
-
-      if (!$submit) {
-        return self::errorExit(9004, 'Could not initiate connection to payment gateway');
+      try {
+        $responseData = $this->callEwayGateway($gateway_URL, $requestXML);
       }
-
-      curl_setopt($submit, CURLOPT_POST, TRUE);
-      // Return the result on success, FALSE on failure.
-      curl_setopt($submit, CURLOPT_RETURNTRANSFER, TRUE);
-      curl_setopt($submit, CURLOPT_POSTFIELDS, $requestXML);
-      curl_setopt($submit, CURLOPT_TIMEOUT, 36000);
-      // if open_basedir or safe_mode are enabled in PHP settings CURLOPT_FOLLOW_LOCATION won't work so don't apply it
-      // it's not really required CRM-5841
-      if (ini_get('open_basedir') == '' && ini_get('safe_mode' == 'Off')) {
-        curl_setopt($submit, CURLOPT_FOLLOWLOCATION, 1);  // ensures any Location headers are followed
+      catch (CRM_Core_Exception $e) {
+        return self::errorExit(9004, $e->getMessage());
       }
-
-      // Send the data out over the wire
-      //--------------------------------
-      $responseData = curl_exec($submit);
-
-      //----------------------------------------------------------------------------------------------------
-      // See if we had a curl error - if so tell 'em and bail out
-      //
-      // NOTE: curl_error does not return a logical value (see its documentation), but
-      // a string, which is empty when there was no error.
-      //----------------------------------------------------------------------------------------------------
-      if ((curl_errno($submit) > 0) || (strlen(curl_error($submit)) > 0)) {
-        $errorNum  = curl_errno($submit);
-        $errorDesc = curl_error($submit);
-
-        if ($errorNum == 0) {
-          // Paranoia - in the unlikely event that 'curl' errno fails.
-          $errorNum = 9005;
-        }
-
-        if (strlen($errorDesc) == 0) {
-          // Paranoia - in the unlikely event that 'curl' error fails.
-          $errorDesc = "Connection to eWAY payment gateway failed";
-        }
-
-        return self::errorExit($errorNum, $errorDesc);
-      }
-
-      //----------------------------------------------------------------------------------------------------
-      // If NULL data returned - tell 'em and bail out
-      //
-      // NOTE: You will not necessarily get a string back, if the request failed for
-      // any reason, the return value will be the boolean false.
-      //----------------------------------------------------------------------------------------------------
-      if (($responseData === FALSE) || (strlen($responseData) == 0)) {
-        return self::errorExit(9006, "Error: Connection to payment gateway failed - no data returned.");
-      }
-
-      //----------------------------------------------------------------------------------------------------
-      // If gateway returned no data - tell 'em and bail out
-      //----------------------------------------------------------------------------------------------------
-      if (empty($responseData)) {
-        return self::errorExit(9007, "Error: No data returned from payment gateway.");
-      }
-
-      //----------------------------------------------------------------------------------------------------
-      // Success so far - close the curl and check the data
-      //----------------------------------------------------------------------------------------------------
-      curl_close($submit);
 
       //----------------------------------------------------------------------------------------------------
       // Payment successfully sent to gateway - process the response now
@@ -640,6 +580,84 @@ The CiviCRM eWAY Payment Processor Module
     $params['text'] = $message;
 
     CRM_Utils_Mail::send($params);
+  }
+
+  /**
+   * Pass xml to eWay gateway and return response if the call succeeds.
+   *
+   * @param $gateway_URL
+   * @param $requestXML
+   *
+   * @return mixed
+   * @throws \CRM_Core_Exception
+   */
+  protected function callEwayGateway($gateway_URL, $requestXML) {
+    $submit = curl_init($gateway_URL);
+
+    if (!$submit) {
+      throw new CRM_Core_Exception('Could not initiate connection to payment gateway');
+    }
+    curl_setopt($submit, CURLOPT_POST, TRUE);
+    // Return the result on success, FALSE on failure.
+    curl_setopt($submit, CURLOPT_RETURNTRANSFER, TRUE);
+    curl_setopt($submit, CURLOPT_POSTFIELDS, $requestXML);
+    curl_setopt($submit, CURLOPT_TIMEOUT, 36000);
+    // if open_basedir or safe_mode are enabled in PHP settings CURLOPT_FOLLOW_LOCATION won't work so don't apply it
+    // it's not really required CRM-5841
+    if (ini_get('open_basedir') == '' && ini_get('safe_mode' == 'Off')) {
+      // Ensure any Location headers are followed.
+      curl_setopt($submit, CURLOPT_FOLLOWLOCATION, 1);
+    }
+
+    $responseData = curl_exec($submit);
+
+
+    //----------------------------------------------------------------------------------------------------
+    // See if we had a curl error - if so tell 'em and bail out
+    //
+    // NOTE: curl_error does not return a logical value (see its documentation), but
+    // a string, which is empty when there was no error.
+    //----------------------------------------------------------------------------------------------------
+    if ((curl_errno($submit) > 0) || (strlen(curl_error($submit)) > 0)) {
+      $errorNum  = curl_errno($submit);
+      $errorDesc = curl_error($submit);
+
+      if ($errorNum == 0) {
+        // Paranoia - in the unlikely event that 'curl' errno fails.
+        $errorNum = 9005;
+      }
+
+      if (strlen($errorDesc) == 0) {
+        // Paranoia - in the unlikely event that 'curl' error fails.
+        $errorDesc = "Connection to eWAY payment gateway failed";
+      }
+
+      throw new CRM_Core_Exception($errorNum . ' ' . $errorDesc);
+    }
+
+    //----------------------------------------------------------------------------------------------------
+    // If NULL data returned - tell 'em and bail out
+    //
+    // NOTE: You will not necessarily get a string back, if the request failed for
+    // any reason, the return value will be the boolean false.
+    //----------------------------------------------------------------------------------------------------
+    if (($responseData === FALSE) || (strlen($responseData) == 0)) {
+      throw new CRM_Core_Exception("Error: Connection to payment gateway failed - no data returned.");
+    }
+
+    //----------------------------------------------------------------------------------------------------
+    // If gateway returned no data - tell 'em and bail out
+    //----------------------------------------------------------------------------------------------------
+    if (empty($responseData)) {
+      throw new CRM_Core_Exception("Error: No data returned from payment gateway.");
+    }
+
+    //----------------------------------------------------------------------------------------------------
+    // Success so far - close the curl and check the data
+    //----------------------------------------------------------------------------------------------------
+    curl_close($submit);
+
+    return $responseData;
   }
 
 }
