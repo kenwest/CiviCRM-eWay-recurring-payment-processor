@@ -1,18 +1,23 @@
 <?php
 
-class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment
-{
+/**
+ * Class CRM_Core_Payment_Ewayrecurring
+ */
+class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
 
-    const CHARSET  = 'UTF-8'; # (not used, implicit in the API, might need to convert?)
+  /**
+   * (not used, implicit in the API, might need to convert?)
+   */
+  const CHARSET  = 'UTF-8';
 
-    /**
-     * We only need one instance of this object. So we use the singleton
-     * pattern and cache the instance in this variable
-     *
-     * @var object
-     * @static
-     */
-    static private $_singleton = null;
+  /**
+   * We only need one instance of this object. So we use the singleton
+   * pattern and cache the instance in this variable
+   *
+   * @var object
+   * @static
+   */
+  static private $_singleton = NULL;
 
   /**********************************************************
    * Constructor
@@ -23,16 +28,16 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment
    *
    * @return \CRM_Core_Payment_Ewayrecurring
    */
-    function __construct( $mode, &$paymentProcessor )
-    {
-        // As this handles recurring and non-recurring, we also need to include original api libraries
-        require_once 'packages/eWAY/eWAY_GatewayRequest.php';
-        require_once 'packages/eWAY/eWAY_GatewayResponse.php';
+  public function __construct($mode, &$paymentProcessor) {
+    // As this handles recurring and non-recurring, we also need to include original api libraries
+    require_once 'packages/eWAY/eWAY_GatewayRequest.php';
+    require_once 'packages/eWAY/eWAY_GatewayResponse.php';
 
-        $this->_mode             = $mode;             // live or test
-        $this->_paymentProcessor = $paymentProcessor;
-        $this->_processorName    = ts('eWay Recurring');
-    }
+    // Mod is live or test.
+    $this->_mode = $mode;
+    $this->_paymentProcessor = $paymentProcessor;
+    $this->_processorName    = ts('eWay Recurring');
+  }
 
 
   /**

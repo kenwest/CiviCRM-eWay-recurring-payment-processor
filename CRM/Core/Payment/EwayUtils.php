@@ -9,15 +9,16 @@ require_once 'nusoap.php';
 
 class CRM_Core_Payment_EwayUtils {
   /**
-   * Get a single eWay client instance
+   * Get a single eWay client instance.
+   *
    * (we cache the client in case of multiple requests)
    *
-   * @param integer $id
+   * @param int $id
    *
    * @return nusoap_client
    * @throws CiviCRM_API3_Exception
    */
-  static function getClient($id) {
+  public static function getClient($id) {
     static $processors = array();
     if (empty($processors[$id])) {
       $processor = civicrm_api3('payment_processor', 'getsingle', array('id' => $id));
@@ -27,9 +28,7 @@ class CRM_Core_Payment_EwayUtils {
   }
 
   /**
-   * eway_token_client
-   *
-   * Creates an eWay SOAP client to the eWay token API
+   * Create an eWay SOAP client to the eWay token API.
    *
    * @param string $gateway_url
    *          URL of the gateway to connect to (could be the test or live gateway)
@@ -40,9 +39,10 @@ class CRM_Core_Payment_EwayUtils {
    * @param string $password
    *          Your eWay business centre password
    *
-   * @return nusoap_client A SOAP client to the eWay token API
+   * @return nusoap_client
+   *   A SOAP client to the eWay token API
    */
-  function createClient($gateway_url, $eway_customer_id, $username, $password) {
+  public function createClient($gateway_url, $eway_customer_id, $username, $password) {
     // Set up SOAP client
     $soap_client = new nusoap_client($gateway_url, FALSE);
     $soap_client->namespaces['man'] = 'https://www.eway.com.au/gateway/managedpayment';

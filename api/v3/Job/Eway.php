@@ -82,7 +82,9 @@ function _civicrm_api3_job_eway_process_contribution($eway_token_clients, $insta
     $instance['contribution']->invoice_id, $instance['contribution']->source
   );
 
-  // Process the contribution as either Completed or Failed
+  // Process the contribution as either Completed or Failed.
+  // @todo call the new ewayrecurring.payment api to do this & rely on it setting trxn_id
+  // or throwing an Exception.
   if ($result['ewayTrxnStatus'] == 'True') {
     $apiResult[] = "Successfully processed payment for " . $instance['type'] . " contribution ID: " . $instance['contribution']->id;
     $apiResult[] = "Marking contribution as complete";
@@ -119,9 +121,7 @@ function _civicrm_api3_job_eway_spec(&$params) {
 }
 
 /**
- * get_eWay_token_clients
- *
- * Find the eWAY recurring payment processors
+ * Get the eWAY recurring payment processors as an array of client objects.
  *
  * @param $domainID
  *
@@ -305,7 +305,8 @@ function get_scheduled_contributions($eway_token_clients) {
 function process_eway_payment($soap_client, $managed_customer_id, $amount_in_cents, $invoice_reference, $invoice_description) {
   // PHP bug: https://bugs.php.net/bug.php?id=49669. issue with value greater than 2147483647.
   settype($managed_customer_id, "float");
-
+  // @todo call the new ewayrecurring.payment api to do this & rely on it setting trxn_id
+  // or throwing an Exception.
   $paymentinfo = array(
     'man:managedCustomerID' => $managed_customer_id,
     'man:amount' => $amount_in_cents,
