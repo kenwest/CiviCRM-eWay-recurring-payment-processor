@@ -1,11 +1,15 @@
 <?php
 
 /**
+ * Query Eway customer token details.
+ *
  * @param array $params
  *
  * @throws API_Exception
  * @throws CiviCRM_API3_Exception
- * @return array API Result array
+ *
+ * @return array
+ *   API Result array
  */
 function civicrm_api3_ewayrecurring_tokenquery($params) {
   $result = array();
