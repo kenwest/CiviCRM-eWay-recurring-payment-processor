@@ -19,13 +19,15 @@ function civicrm_api3_ewayrecurring_tokenquery($params) {
     $params['payment_processor_id'] = $recur['payment_processor_id'];
   }
   $client = CRM_Core_Payment_EwayUtils::getClient($params['payment_processor_id']);
-
   $endPoint = 'https://www.eway.com.au/gateway/managedpayment/QueryCustomer';
   $ewayData = array(
     'man:managedCustomerID' => $params['managed_customer_id'],
   );
   $ewayResult = $client->call('man:QueryCustomer', $ewayData, '', $endPoint);
-  if (!empty($ewayResult['faultcode']) || empty($ewayResult)) {
+  if (empty($ewayResult)) {
+    throw new API_Exception('No response from eWay.');
+  }
+  if (!empty($ewayResult['faultcode'])) {
     throw new API_Exception($ewayResult['faultstring']);
   }
   $result[$params['managed_customer_id']] = array_merge($ewayResult, array(
@@ -39,4 +41,17 @@ function civicrm_api3_ewayrecurring_tokenquery($params) {
       'payment_processor_id' => $recur['payment_processor_id'],
   ));
   return civicrm_api3_create_success($result, $params);
+}
+
+/**
+ * Define metadata for ewayrecurring.tokenquery.
+ *
+ * @param array $params
+ */
+function _civicrm_api3_ewayrecurring_tokenquery_spec(&$params) {
+  $params['contribution_recur_id'] = array(
+    'api.required' => TRUE,
+    'title' => 'Contribution Recur ID',
+    'type' => CRM_Utils_Type::T_INT,
+  );
 }
