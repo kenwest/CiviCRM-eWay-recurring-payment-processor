@@ -187,31 +187,48 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
 
       // We've created the customer successfully.
       $managed_customer_id = $result;
+      if ($this->supportsImmediateRecurringPayment()) {
+        try {
+          $initialPayment = civicrm_api3('ewayrecurring', 'payment', array(
+            'invoice_id' => $params['invoiceID'],
+            'amount' => $params['amount'],
+            'managed_customer_id' => $managed_customer_id,
+            'description' => $params['description'] . ts('first payment'),
+            'payment_processor_id' => $this->_paymentProcessor['id'],
+          ));
+          $params['trxn_id'] = $initialPayment['values'][$managed_customer_id]['trxn_id'];
+          // Save the eWay customer token in the recurring contribution's processor_id field.
+          civicrm_api3('contribution_recur', 'create', array(
+            'id' => $params['contributionRecurID'],
+            'processor_id' => $managed_customer_id,
+          ));
 
-      // Save the eWay customer token in the recurring contribution's processor_id field.
-      CRM_Core_DAO::setFieldValue(
-        'CRM_Contribute_DAO_ContributionRecur',
-        $params['contributionRecurID'],
-        'processor_id',
-        $managed_customer_id
-      );
+          civicrm_api3('contribution', 'completetransaction', array(
+            'id' => $params['contributionID'],
+            'trxn_id' => $params['trxn_id'],
+          ));
 
-      //send recurring Notification email for user
-      $recur = new CRM_Contribute_BAO_ContributionRecur();
-      $recur->id = $params['contributionRecurID'];
-      $recur->find(TRUE);
-      $autoRenewMembership = FALSE;
-      CRM_Contribute_BAO_ContributionPage::recurringNotify(
-          CRM_Core_Payment::RECURRING_PAYMENT_START,
-          $params['contactID'],
-          $params['contributionPageID'],
-          $recur,
-          $autoRenewMembership
-      );
+          // Send recurring Notification email for user.
+          $recur = new CRM_Contribute_BAO_ContributionRecur();
+          $recur->id = $params['contributionRecurID'];
+          $recur->find(TRUE);
+          $autoRenewMembership = FALSE;
+          CRM_Contribute_BAO_ContributionPage::recurringNotify(
+            CRM_Core_Payment::RECURRING_PAYMENT_START,
+            $params['contactID'],
+            $params['contributionPageID'],
+            $recur,
+            $autoRenewMembership
+          );
+        }
+        catch (CiviCRM_API3_Exception $e) {
+          return self::errorExit(9014, 'Initial payment not processed' . $e->getMessage());
+        }
+      }
+      else {
+        // This payment will staying in a pending state until it's processed by the scheduled job.
+      }
 
-      /* And we're done - this payment will staying in a pending state until it's processed
-         * by the Job
-         */
     }
     // This is a one off payment, most of this is lifted straight from the original code, so I wont document it.
     else {
@@ -282,7 +299,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
         //----------------------------------------------------------------------------------------------------
         // Check to see if we have a duplicate before we send
         //----------------------------------------------------------------------------------------------------
-        if ($this->_checkDupe($params['invoiceID'])) {
+        if ($this->checkDupe($params['invoiceID'])) {
           return self::errorExit(9003, 'It appears that this transaction is a duplicate.  Have you already submitted the form once?  If so there may have been a connection problem.  Check your email for a receipt from eWAY.  If you do not receive a receipt within 2 hours you can try your transaction again.  If you continue to have problems please contact the site administrator.');
         }
 
@@ -363,7 +380,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
    * @return bool
    *   True if ID exists, else false
    */
-  public function _checkDupe($invoiceId) {
+  public function checkDupe($invoiceId) {
     $contribution = new CRM_Contribute_DAO_Contribution();
     $contribution->invoice_id = $invoiceId;
     return $contribution->find();
