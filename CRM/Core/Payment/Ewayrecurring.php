@@ -394,7 +394,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
    *
    * @return object
    */
-  public function &errorExit ($errorCode = NULL, $errorMessage = NULL) {
+  public function errorExit ($errorCode = NULL, $errorMessage = NULL) {
     $e = CRM_Core_Error::singleton();
 
     if ($errorCode) {
@@ -663,6 +663,17 @@ The CiviCRM eWAY Payment Processor Module
     curl_close($submit);
 
     return $responseData;
+  }
+
+  /**
+   * Does the CiviCRM version supports immediate recurring payments.
+   *
+   * At this stage this is more a place holder but not all versions can cope with doing the payment now.
+   *
+   * @return bool
+   */
+  public function supportsImmediateRecurringPayment() {
+    return TRUE;
   }
 
 }

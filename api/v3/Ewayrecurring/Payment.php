@@ -24,13 +24,20 @@ function civicrm_api3_ewayrecurring_payment($params) {
   );
   $result = $client->call('man:ProcessPayment', $paymentInfo, '', $endPoint);
 
-  if (!empty($ewayResult['faultcode']) || empty($ewayResult)) {
-    throw new API_Exception($ewayResult['faultstring']);
+  if (empty($result)) {
+    throw new API_Exception('No response from eWay.');
   }
+  if (!empty($result['faultcode'])) {
+    throw new API_Exception($result['faultstring']);
+  }
+
   if ($result['ewayTrxnStatus'] == 'True') {
     return civicrm_api3_create_success(array($params['managed_customer_id'] => array('trxn_id' => $result['ewayTrxnNumber'])), $params);
   }
   else {
+    if (!empty($result['ewayTrxnError'])) {
+      throw new API_Exception($result['ewayTrxnError']);
+    }
     throw new API_Exception('unknown EWAY processing error');
   }
 }
