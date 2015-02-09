@@ -191,7 +191,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
         try {
           $initialPayment = civicrm_api3('ewayrecurring', 'payment', array(
             'invoice_id' => $params['invoiceID'],
-            'amount' => $params['amount'],
+            'amount_in_cents' => round(((float) $params['amount']) * 100),
             'managed_customer_id' => $managed_customer_id,
             'description' => $params['description'] . ts('first payment'),
             'payment_processor_id' => $this->_paymentProcessor['id'],

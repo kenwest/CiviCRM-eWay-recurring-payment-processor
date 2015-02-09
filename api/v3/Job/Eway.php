@@ -438,9 +438,9 @@ function _sendReceipt($params) {
 /**
  * Is version of at least the version provided.
  *
- * @param number $version
+ * @param string $version
  *
- * @return boolean
+ * @return bool
  */
 function _versionAtLeast($version) {
   $codeVersion = explode('.', CRM_Utils_System::version());
