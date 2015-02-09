@@ -201,6 +201,9 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
           civicrm_api3('contribution_recur', 'create', array(
             'id' => $params['contributionRecurID'],
             'processor_id' => $managed_customer_id,
+            'contribution_status_id' => CRM_Core_OptionGroup::getValue('contribution_status', 'In Progress', 'name'),
+            'next_sched_contribution_date' => CRM_Utils_Date::isoToMysql(
+              date('Y-m-d 00:00:00', strtotime('+' . $params['frequency_interval'] . ' ' . $params['frequency_unit']))),
           ));
 
           civicrm_api3('contribution', 'completetransaction', array(
