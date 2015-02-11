@@ -196,15 +196,23 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
             'description' => $params['description'] . ts('first payment'),
             'payment_processor_id' => $this->_paymentProcessor['id'],
           ));
+
+          // Here we compensate for the fact core accepts 0 as a valid frequency
+          // interval and set it.
+          $extra = array();
+          if (empty($params['frequency_interval'])) {
+            $params['frequency_interval'] = 1;
+            $extra['frequency_interval'] = 1;
+          }
           $params['trxn_id'] = $initialPayment['values'][$managed_customer_id]['trxn_id'];
           // Save the eWay customer token in the recurring contribution's processor_id field.
-          civicrm_api3('contribution_recur', 'create', array(
+          civicrm_api3('contribution_recur', 'create', array_merge(array(
             'id' => $params['contributionRecurID'],
             'processor_id' => $managed_customer_id,
             'contribution_status_id' => CRM_Core_OptionGroup::getValue('contribution_status', 'In Progress', 'name'),
             'next_sched_contribution_date' => CRM_Utils_Date::isoToMysql(
               date('Y-m-d 00:00:00', strtotime('+' . $params['frequency_interval'] . ' ' . $params['frequency_unit']))),
-          ));
+          ), $extra));
 
           civicrm_api3('contribution', 'completetransaction', array(
             'id' => $params['contributionID'],
