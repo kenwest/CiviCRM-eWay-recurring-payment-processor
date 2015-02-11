@@ -18,7 +18,7 @@ function civicrm_api3_ewayrecurring_payment($params) {
 
   $paymentInfo = array(
     'man:managedCustomerID' => $params['managed_customer_id'],
-    'man:amount' => $params['amount'],
+    'man:amount' => $params['amount_in_cents'],
     'man:InvoiceReference' => $params['invoice_id'],
     'man:InvoiceDescription' => $params['description'],
   );
@@ -49,7 +49,7 @@ function civicrm_api3_ewayrecurring_payment($params) {
  *   Existing specifications.
  */
 function _civicrm_api3_ewayrecurring_payment_spec(&$params) {
-  $params['amount'] = array(
+  $params['amount_in_cents'] = array(
     'title' => 'Amount in cents',
     'type' => CRM_Utils_Type::T_INT,
     'api.required' => TRUE,
