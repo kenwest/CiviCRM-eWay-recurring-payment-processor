@@ -87,17 +87,9 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
     $ewayCustomerID = $this->_paymentProcessor['subject'];
 
     // This data is shared across one off and recurring payments.
-
-    $expireYear = substr($params['year'], 2, 2);
-    // Pad month with zeros.
-    $expireMonth   = sprintf('%02d', (int) $params['month']);
     $txtOptions    = "";
-    $amountInCents = round(((float) $params['amount']) * 100);
-    $credit_card_name  = $params['first_name'] . " ";
-    if (strlen($params['middle_name']) > 0) {
-      $credit_card_name .= $params['middle_name'] . " ";
-    }
-    $credit_card_name .= $params['last_name'];
+    $amountInCents = $this->getAmountInCents($params);
+    $credit_card_name = $this->getCreditCardName($params);
 
     /*
      * OPTIONAL: If TEST Card Number force an Override of URL and CustomerID.
@@ -112,61 +104,9 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
 
     // Was the recurring payment check box checked?
     if (isset($params['is_recur']) && $params['is_recur'] == 1) {
-      $gateway_URL = $this->_paymentProcessor['url_recur'];
-      $soap_client = new nusoap_client($gateway_URL, FALSE);
-      $err = $soap_client->getError();
-      if ($err) {
-        throw new CRM_Core_Exception(htmlspecialchars($soap_client->getDebug(), ENT_QUOTES));
-      }
-
-      // Set namespace.
-      $soap_client->namespaces['man'] = 'https://www.eway.com.au/gateway/managedpayment';
-
-      // Set SOAP header.
-      $headers = "<man:eWAYHeader><man:eWAYCustomerID>"
-        . $ewayCustomerID
-        . "</man:eWAYCustomerID><man:Username>"
-        . $this->_paymentProcessor['user_name']
-        . "</man:Username><man:Password>"
-        . $this->_paymentProcessor['password']
-        . "</man:Password></man:eWAYHeader>";
-      $soap_client->setHeaders($headers);
-
-      // Add eWay customer.
-      $requestBody = array(
-        // Crazily eWay makes this a mandatory field with fixed values.
-        'man:Title' => 'Mr.',
-        'man:FirstName' => $params['first_name'],
-        'man:LastName' => $params['last_name'],
-        'man:Address' => $params['street_address'],
-        'man:Suburb' => $params['city'],
-        'man:State' => $params['state_province'],
-        'man:Company' => '',
-        'man:PostCode' => $params['postal_code'],
-        // TODO: Remove this hardcoded hack - use $params['country']
-        'man:Country' => 'au',
-        'man:Email' => $params['email'],
-        'man:Fax' => '',
-        'man:Phone' => '',
-        'man:Mobile' => '',
-        'man:CustomerRef' => '',
-        'man:JobDesc' => '',
-        'man:Comments' => '',
-        'man:URL' => '',
-        'man:CCNumber' => $params['credit_card_number'],
-        'man:CCNameOnCard' => $credit_card_name,
-        'man:CCExpiryMonth' => $expireMonth,
-        'man:CCExpiryYear' => $expireYear,
-      );
-
-      // Hook to allow customer info to be changed before submitting it.
-      CRM_Utils_Hook::alterPaymentProcessorParams($this, $params, $requestBody);
-
       // Create the customer via the API.
       try{
-        $soapAction = 'https://www.eway.com.au/gateway/managedpayment/CreateCustomer';
-        $result = $soap_client->call('man:CreateCustomer', $requestBody, '', $soapAction);
-
+        $result = $this->createToken($this->_paymentProcessor, $params);
         if ($result === FALSE) {
           return self::errorExit(9011, 'Failed to create managed customer - result is FALSE');
         }
@@ -293,8 +233,9 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
         $eWAYRequest->InvoiceReference($params['invoiceID']); // 50 Chars - ewayCustomerInvoiceRef
         $eWAYRequest->CardHolderName($credit_card_name); // 50 Chars - ewayCardHoldersName            - Required
         $eWAYRequest->CardNumber($params['credit_card_number']); // 20 Chars - ewayCardNumber                 - Required
-        $eWAYRequest->CardExpiryMonth($expireMonth); // 2 Chars - ewayCardExpiryMonth            - Required
-        $eWAYRequest->CardExpiryYear($expireYear); // 2 Chars - ewayCardExpiryYear             - Required
+        $eWAYRequest->CardExpiryMonth($this->getCreditCardExpiryMonth($params));
+        // 2 Chars - ewayCardExpiryYear - Required.
+        $eWAYRequest->CardExpiryYear($this->getCreditCardExpiryYear($params));
         $eWAYRequest->CVN($params['cvv2']); // 4 Chars - ewayCVN                        - Required if CVN Gateway used
         $eWAYRequest->TransactionNumber($uniqueTrxnNum); // 16 Chars - ewayTrxnNumber
         $eWAYRequest->EwayOption1($txtOptions); // 255 Chars - ewayOption1
@@ -702,6 +643,123 @@ The CiviCRM eWAY Payment Processor Module
    */
   public function supportsImmediateRecurringPayment() {
     return TRUE;
+  }
+
+  /**
+   * Create token on eWay.
+   *
+   * @param $paymentProcessor
+   * @param array $params
+   *
+   * @return mixed
+   * @throws \CRM_Core_Exception
+   */
+  protected function createToken($paymentProcessor, $params) {
+    $gateway_URL = $paymentProcessor['url_recur'];
+    $soap_client = new nusoap_client($gateway_URL, FALSE);
+    $err = $soap_client->getError();
+    if ($err) {
+      throw new CRM_Core_Exception(htmlspecialchars($soap_client->getDebug(), ENT_QUOTES));
+    }
+
+    // Set namespace.
+    $soap_client->namespaces['man'] = 'https://www.eway.com.au/gateway/managedpayment';
+
+    // Set SOAP header.
+    $headers = "<man:eWAYHeader><man:eWAYCustomerID>"
+      . $this->_paymentProcessor['subject']
+      . "</man:eWAYCustomerID><man:Username>"
+      . $this->_paymentProcessor['user_name']
+      . "</man:Username><man:Password>"
+      . $this->_paymentProcessor['password']
+      . "</man:Password></man:eWAYHeader>";
+    $soap_client->setHeaders($headers);
+
+    // Add eWay customer.
+    $requestBody = array(
+      // Crazily eWay makes this a mandatory field with fixed values.
+      'man:Title' => 'Mr.',
+      'man:FirstName' => $params['first_name'],
+      'man:LastName' => $params['last_name'],
+      'man:Address' => $params['street_address'],
+      'man:Suburb' => $params['city'],
+      'man:State' => $params['state_province'],
+      'man:Company' => '',
+      'man:PostCode' => $params['postal_code'],
+      // TODO: Remove this hardcoded hack - use $params['country']
+      'man:Country' => 'au',
+      'man:Email' => $params['email'],
+      'man:Fax' => '',
+      'man:Phone' => '',
+      'man:Mobile' => '',
+      'man:CustomerRef' => '',
+      'man:JobDesc' => '',
+      'man:Comments' => '',
+      'man:URL' => '',
+      'man:CCNumber' => $params['credit_card_number'],
+      'man:CCNameOnCard' => $this->getCreditCardName($params),
+      'man:CCExpiryMonth' => $this->getCreditCardExpiryMonth($params),
+      'man:CCExpiryYear' => $this->getCreditCardExpiryYear($params),
+    );
+    // Hook to allow customer info to be changed before submitting it.
+    CRM_Utils_Hook::alterPaymentProcessorParams($this, $params, $requestBody);
+    $soapAction = 'https://www.eway.com.au/gateway/managedpayment/CreateCustomer';
+    $result = $soap_client->call('man:CreateCustomer', $requestBody, '', $soapAction);
+    return $result;
+  }
+
+  /**
+   * Get Credit card name from parameters.
+   *
+   * @param array $params
+   *
+   * @return string
+   *   Credit card name
+   */
+  protected function getCreditCardName(&$params) {
+    $credit_card_name = $params['first_name'] . " ";
+    if (strlen($params['middle_name']) > 0) {
+      $credit_card_name .= $params['middle_name'] . " ";
+    }
+    $credit_card_name .= $params['last_name'];
+    return $credit_card_name;
+  }
+
+  /**
+   * @param $params
+   *
+   * @return string
+   */
+  protected function getCreditCardExpiryYear(&$params) {
+    $expireYear = substr($params['year'], 2, 2);
+    return $expireYear;
+  }
+
+  /**
+   * Get credit card expiry month.
+   *
+   * 2 Chars Required parameter.
+   *
+   * @param $params
+   *
+   * @return string
+   */
+  protected function getCreditCardExpiryMonth(&$params) {
+    return sprintf('%02d', (int) $params['month']);
+  }
+
+  /**
+   * Get amount in cents.
+   *
+   * eg. 100 for $1
+   *
+   * @param $params
+   *
+   * @return float
+   */
+  protected function getAmountInCents(&$params) {
+    $amountInCents = round(((float) $params['amount']) * 100);
+    return $amountInCents;
   }
 
 }
