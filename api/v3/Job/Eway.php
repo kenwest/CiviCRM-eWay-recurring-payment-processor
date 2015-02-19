@@ -78,8 +78,10 @@ function _civicrm_api3_job_eway_process_contribution($eway_token_clients, $insta
 
   $result = process_eway_payment(
     $eway_token_clients[$instance['contribution_recur']->payment_processor_id],
-    $instance['contribution_recur']->processor_id, $amount_in_cents,
-    $instance['contribution']->invoice_id, $instance['contribution']->source
+    $instance['contribution_recur']->processor_id,
+    $amount_in_cents,
+    $instance['contribution']->invoice_id,
+    $instance['contribution']->source
   );
 
   // Process the contribution as either Completed or Failed.

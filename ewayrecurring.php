@@ -83,3 +83,51 @@ function ewayrecurring_civicrm_managed(&$entities) {
   }
   return _ewayrecurring_civix_civicrm_managed($entities);
 }
+
+/**
+ * Implements hook_civicrm_navigationMenu().
+ *
+ * Adds eway settings page to the navigation menu.
+ *
+ * @param array $menu
+ */
+function ewayrecurring_civicrm_navigationMenu(&$menu) {
+  $maxID = CRM_Core_DAO::singleValueQuery("SELECT max(id) FROM civicrm_navigation");
+  $parentID = CRM_Core_DAO::singleValueQuery(
+    "SELECT id
+     FROM civicrm_navigation n
+     WHERE  n.name = 'System Settings'
+       AND n.domain_id = " . CRM_Core_Config::domainID()
+  );
+  $navID = $maxID + 1;
+  $menu[$navID] = array(
+    'attributes' => array(
+      'label' => 'Eway',
+      'name' => 'eway',
+      'url' => 'civicrm/eway/settings',
+      'permission' => 'administer CiviCRM',
+      'operator' => NULL,
+      'separator' => NULL,
+      'parentID' => $parentID,
+      'active' => 1,
+      'navID' => $navID,
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_civicrm_config().
+ */
+function ewayrecurring_civicrm_alterSettingsFolders(&$metaDataFolders) {
+  static $configured = FALSE;
+  if ($configured) {
+    return;
+  }
+  $configured = TRUE;
+
+  $extRoot = dirname(__FILE__) . DIRECTORY_SEPARATOR;
+  $extDir = $extRoot . 'settings';
+  if (!in_array($extDir, $metaDataFolders)) {
+    $metaDataFolders[] = $extDir;
+  }
+}
