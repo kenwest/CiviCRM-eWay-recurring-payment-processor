@@ -42,7 +42,7 @@ class CRM_Core_Payment_EwayUtils {
    * @return nusoap_client
    *   A SOAP client to the eWay token API
    */
-  public function createClient($gateway_url, $eway_customer_id, $username, $password) {
+  static public function createClient($gateway_url, $eway_customer_id, $username, $password) {
     // Set up SOAP client
     $soap_client = new nusoap_client($gateway_url, FALSE);
     $soap_client->namespaces['man'] = 'https://www.eway.com.au/gateway/managedpayment';

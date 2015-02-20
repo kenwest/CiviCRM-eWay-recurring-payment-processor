@@ -107,19 +107,6 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
       // Create the customer via the API.
       try{
         $result = $this->createToken($this->_paymentProcessor, $params);
-        if ($result === FALSE) {
-          return self::errorExit(9011, 'Failed to create managed customer - result is FALSE');
-        }
-        elseif (is_array($result)) {
-          return self::errorExit(9011, 'Failed to create managed customer - result ('
-            . implode(', ', array_keys($result))
-            . ') is ('
-            . implode(', ', $result)
-            . ')');
-        }
-        elseif (!is_numeric($result)) {
-          return self::errorExit(9011, 'Failed to create managed customer - result is ' . $result);
-        }
       }
       catch (Exception $e) {
         return self::errorExit(9010, $e->getMessage());
@@ -651,10 +638,20 @@ The CiviCRM eWAY Payment Processor Module
    * @param $paymentProcessor
    * @param array $params
    *
-   * @return mixed
+   * @return int
+   *   Unique id of the token created to manage this customer in eway.
+   *
    * @throws \CRM_Core_Exception
    */
   protected function createToken($paymentProcessor, $params) {
+    if (civicrm_api3('setting', 'getvalue', array(
+      'group' => 'eway',
+      'name' => 'eway_developer_mode'
+      ))) {
+      // I'm not sure about setting status as in future we might do this in an api call.
+      CRM_Core_Session::setStatus(ts('Site is in developer mode. No communication with eway has taken place'));
+      return uniqid();
+    }
     $gateway_URL = $paymentProcessor['url_recur'];
     $soap_client = new nusoap_client($gateway_URL, FALSE);
     $err = $soap_client->getError();
@@ -705,6 +702,19 @@ The CiviCRM eWAY Payment Processor Module
     CRM_Utils_Hook::alterPaymentProcessorParams($this, $params, $requestBody);
     $soapAction = 'https://www.eway.com.au/gateway/managedpayment/CreateCustomer';
     $result = $soap_client->call('man:CreateCustomer', $requestBody, '', $soapAction);
+    if ($result === FALSE) {
+      throw new CRM_Core_Exception('Failed to create managed customer - result is FALSE');
+    }
+    elseif (is_array($result)) {
+      throw new CRM_Core_Exception('Failed to create managed customer - result ('
+        . implode(', ', array_keys($result))
+        . ') is ('
+        . implode(', ', $result)
+        . ')');
+    }
+    elseif (!is_numeric($result)) {
+      throw new CRM_Core_Exception('Failed to create managed customer - result is ' . $result);
+    }
     return $result;
   }
 
