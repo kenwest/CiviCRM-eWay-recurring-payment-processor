@@ -347,18 +347,15 @@ function complete_contribution($contribution) {
 /**
  * Marks a contribution as failed.
  *
- * @param CRM_Contribute_BAO_Contribution $contribution
+ * @param CRM_Contribute_BAO_Contribution $failed
  *   The contribution to mark as failed
  *
  * @return CRM_Contribute_BAO_Contribution
  *   The contribution object.
  */
-function fail_contribution($contribution) {
+function fail_contribution($failed) {
   $contributionStatus = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
 
-  $failed = new CRM_Contribute_BAO_Contribution();
-  $failed->id = $contribution->id;
-  $failed->find(TRUE);
   $failed->contribution_status_id = array_search('Failed', $contributionStatus);
   $failed->receive_date = CRM_Utils_Date::isoToMysql(date('Y-m-d H:i:s'));
   $failed->save();
