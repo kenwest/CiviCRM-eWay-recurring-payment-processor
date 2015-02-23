@@ -375,6 +375,7 @@ function repeat_contribution($contribution, $status_id) {
   else {
     // Legacy - expect messed up line items. CRM-15996.
     $contribution->save();
+    complete_contribution($contribution);
   }
   return $contribution;
 }
