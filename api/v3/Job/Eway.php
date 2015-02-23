@@ -82,7 +82,7 @@ function _civicrm_api3_job_eway_process_contribution($eway_token_clients, $insta
       'invoice_id' => $instance['contribution']->invoice_id,
       'amount_in_cents' => $amount_in_cents,
       'managed_customer_id' => $managed_customer_id,
-      'description' => $instance['contribution']->source,
+      'description' => !empty($instance['contribution']->source) ? $instance['contribution']->source : ts('Recurring payment'),
       'payment_processor_id' => $instance['contribution_recur']->payment_processor_id,
     ));
 
