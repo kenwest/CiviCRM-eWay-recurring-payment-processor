@@ -72,29 +72,33 @@ function civicrm_api3_job_eway($params) {
 function _civicrm_api3_job_eway_process_contribution($eway_token_clients, $instance) {
   $apiResult = array();
 
-  // Process the payment
+  // Process the payment.
   $apiResult[] = "Processing payment for " . $instance['type'] . " contribution ID: " . $instance['contribution']->id;
   $amount_in_cents = str_replace('.', '', $instance['contribution']->total_amount);
+  $managed_customer_id = $instance['contribution_recur']->processor_id;
 
-  $result = process_eway_payment(
-    $eway_token_clients[$instance['contribution_recur']->payment_processor_id],
-    $instance['contribution_recur']->processor_id,
-    $amount_in_cents,
-    $instance['contribution']->invoice_id,
-    $instance['contribution']->source
-  );
+  try {
+    $result = civicrm_api3('ewayrecurring', 'payment', array(
+      'invoice_id' => $instance['contribution']->invoice_id,
+      'amount_in_cents' => $amount_in_cents,
+      'managed_customer_id' => $managed_customer_id,
+      'description' => $instance['contribution']->source,
+      'payment_processor_id' => $instance['contribution_recur']->payment_processor_id,
+    ));
 
-  // Process the contribution as either Completed or Failed.
-  // @todo call the new ewayrecurring.payment api to do this & rely on it setting trxn_id
-  // or throwing an Exception.
-  if ($result['ewayTrxnStatus'] == 'True') {
+    // Process the contribution as either Completed or Failed.
     $apiResult[] = "Successfully processed payment for " . $instance['type'] . " contribution ID: " . $instance['contribution']->id;
     $apiResult[] = "Marking contribution as complete";
-    $instance['contribution']->trxn_id = $result['ewayTrxnNumber'];
-    complete_contribution($instance['contribution']);
+    $instance['contribution']->trxn_id = $result['values'][$managed_customer_id]['trxn_id'];
+    if (empty($instance['contribution']->id)) {
+      repeat_contribution($instance['contribution'], 'Completed');
+    }
+    else {
+      complete_contribution($instance['contribution']);
+    }
     $instance['contribution_recur']->failure_count = 0;
   }
-  else {
+  catch (CiviCRM_API3_Exception $e) {
     $apiResult[] = "ERROR: failed to process payment for " . $instance['type'] . " contribution ID: " . $instance['contribution']->id;
     $apiResult[] = 'eWAY managed customer: ' . $instance['contribution_recur']->processor_id;
     $apiResult[] = 'eWAY response: ' . $result['faultstring'];
@@ -271,7 +275,6 @@ function get_scheduled_contributions($eway_token_clients) {
       $new_contribution_record->source = $past_contribution->source;
       $new_contribution_record->address_id = $past_contribution->address_id;
     }
-    $new_contribution_record->save();
 
     $result[] = array(
       'type' => 'Scheduled',
