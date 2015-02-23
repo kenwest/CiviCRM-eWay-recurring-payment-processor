@@ -345,6 +345,41 @@ function complete_contribution($contribution) {
 }
 
 /**
+ * Repeat contribution.
+ *
+ * Marks a contribution as complete.
+ *
+ * @param CRM_Contribute_BAO_Contribution $contribution
+ *  The contribution to mark as complete
+ *
+ * @param $status_id
+ *
+ * @return \CRM_Contribute_BAO_Contribution
+ *   The contribution object.
+ *
+ * @throws \CiviCRM_API3_Exception
+ */
+function repeat_contribution($contribution, $status_id) {
+  $actions = civicrm_api3('Contribution', 'getactions', array());
+  if (in_array('repeattransaction', $actions['values'])) {
+    civicrm_api3('contribution', 'repeattransaction', array(
+      'trxn_id' => $contribution->trxn_id,
+      'contribution_status_id' => $status_id,
+      'original_contribution_id' => civicrm_api3('contribution', 'getvalue', array(
+        'return' => 'id',
+        'contribution_recur_id' => $contribution->contribution_recur_id,
+        'options' => array('limit' => 1, 'sort' => 'id ASC'),
+      )),
+    ));
+  }
+  else {
+    // Legacy - expect messed up line items. CRM-15996.
+    $contribution->save();
+  }
+  return $contribution;
+}
+
+/**
  * Marks a contribution as failed.
  *
  * @param CRM_Contribute_BAO_Contribution $failed
