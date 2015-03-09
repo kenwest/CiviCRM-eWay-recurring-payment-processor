@@ -23,11 +23,13 @@
  +--------------------------------------------------------------------+
 */
 /**
-
- * eWay API call
+ * EWay API call.
  *
  * @param array $params
- * @return array API result descriptor
+ *
+ * @return array
+ *   API result descriptor.
+ *
  * @see civicrm_api3_create_success
  * @see civicrm_api3_create_error
  * @throws API_Exception
@@ -36,9 +38,6 @@ function civicrm_api3_job_eway($params) {
   require_once 'nusoap.php';
 
   $apiResult = array();
-
-  // Get contribution status values
-  $contributionStatus = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
 
   // Create eWay token clients
   $eway_token_clients = get_eway_token_clients($params['domain_id']);
@@ -63,7 +62,12 @@ function civicrm_api3_job_eway($params) {
 }
 
 /**
+ * Process a contribution.
  *
+ * @param array $eway_token_clients
+ * @param array $instance
+ *
+ * @return array
  */
 function _civicrm_api3_job_eway_process_contribution($eway_token_clients, $instance) {
   $apiResult = array();
@@ -78,14 +82,17 @@ function _civicrm_api3_job_eway_process_contribution($eway_token_clients, $insta
     $instance['contribution']->invoice_id, $instance['contribution']->source
   );
 
-  // Process the contribution as either Completed or Failed
+  // Process the contribution as either Completed or Failed.
+  // @todo call the new ewayrecurring.payment api to do this & rely on it setting trxn_id
+  // or throwing an Exception.
   if ($result['ewayTrxnStatus'] == 'True') {
     $apiResult[] = "Successfully processed payment for " . $instance['type'] . " contribution ID: " . $instance['contribution']->id;
     $apiResult[] = "Marking contribution as complete";
     $instance['contribution']->trxn_id = $result['ewayTrxnNumber'];
     complete_contribution($instance['contribution']);
     $instance['contribution_recur']->failure_count = 0;
-  } else {
+  }
+  else {
     $apiResult[] = "ERROR: failed to process payment for " . $instance['type'] . " contribution ID: " . $instance['contribution']->id;
     $apiResult[] = 'eWAY managed customer: ' . $instance['contribution_recur']->processor_id;
     $apiResult[] = 'eWAY response: ' . $result['faultstring'];
@@ -103,8 +110,9 @@ function _civicrm_api3_job_eway_process_contribution($eway_token_clients, $insta
 }
 
 /**
- * alter metadata
- * @param $params
+ * Alter metadata.
+ *
+ * @param array $params
  */
 function _civicrm_api3_job_eway_spec(&$params) {
   $params['domain_id']['api.default'] = CRM_Core_Config::domainID();
@@ -113,18 +121,19 @@ function _civicrm_api3_job_eway_spec(&$params) {
 }
 
 /**
- * get_eWay_token_clients
- *
- * Find the eWAY recurring payment processors
+ * Get the eWAY recurring payment processors as an array of client objects.
  *
  * @param $domainID
  *
  * @throws CiviCRM_API3_Exception
- * @return array An associative array of Processor Id => eWAY Token Client
+ *
+ * @return array
+ *   An associative array of Processor Id => eWAY Token Client
  */
 function get_eway_token_clients($domainID) {
   $params = array(
-    'class_name' => 'Payment_Ewayrecurring'
+    'class_name' => 'Payment_Ewayrecurring',
+    'return' => 'id',
   );
   if (!empty($domainID)) {
     $params['domain_id'] = $domainID;
@@ -132,21 +141,22 @@ function get_eway_token_clients($domainID) {
 
   $processors = civicrm_api3('payment_processor', 'get', $params);
   $result = array();
-  foreach ($processors['values'] as $id => $processor) {
-    $result[$id] = eway_token_client($processor['url_recur'], $processor['subject'], $processor['user_name'], $processor['password']);
+  foreach (array_keys($processors['values']) as $id) {
+    $result[$id] = CRM_Core_Payment_EwayUtils::getClient($id);
   }
   return $result;
 }
 
 /**
- * get_first_contribution_from_recurring
+ * Get first_contribution_from_recurring.
  *
  * find the latest contribution belonging to the recurring contribution so that we
  * can extract some info for cloning, like source etc
  *
  * @param int $recur_id
  *
- * @return CRM_Contribute_BAO_Contribution contribution object
+ * @return CRM_Contribute_BAO_Contribution
+ *   Contribution Object.
  */
 function get_first_contribution_from_recurring($recur_id) {
   $contributions = new CRM_Contribute_BAO_Contribution();
@@ -154,13 +164,13 @@ function get_first_contribution_from_recurring($recur_id) {
   $contributions->orderBy("`id`");
   $contributions->find();
 
-  while ( $contributions->fetch() ) {
+  while ($contributions->fetch()) {
     return clone ($contributions);
   }
 }
 
 /**
- * get_pending_recurring_contributions
+ * Get pending_recurring_contributions.
  *
  * Gets recurring contributions that are in a pending state.
  * These are for newly created recurring contributions and should
@@ -169,7 +179,8 @@ function get_first_contribution_from_recurring($recur_id) {
  *
  * @param $eway_token_clients
  *
- * @return array An array of associative arrays containing contribution & contribution_recur objects
+ * @return array
+ *   Array of associative arrays containing contribution & contribution_recur objects.
  */
 function get_pending_recurring_contributions($eway_token_clients) {
   if (empty($eway_token_clients)) {
@@ -186,16 +197,16 @@ function get_pending_recurring_contributions($eway_token_clients) {
 
   $result = array();
 
-  while ( $recurring->fetch() ) {
-    // Get the Contribution
+  while ($recurring->fetch()) {
+    // Get the Contribution.
     $contribution = new CRM_Contribute_BAO_Contribution();
     $contribution->whereAdd("`contribution_recur_id` = " . $recurring->id);
 
-    if ($contribution->find(true)) {
+    if ($contribution->find(TRUE)) {
       $result[] = array(
         'type' => 'Pending',
         'contribution' => clone ($contribution),
-        'contribution_recur' => clone ($recurring)
+        'contribution_recur' => clone ($recurring),
       );
     }
   }
@@ -203,13 +214,12 @@ function get_pending_recurring_contributions($eway_token_clients) {
 }
 
 /**
- * get_scheduled_contributions
- *
- * Gets recurring contributions that are scheduled to be processed today
+ * Gets recurring contributions that are scheduled to be processed today.
  *
  * @param $eway_token_clients
  *
- * @return array An array of contribution_recur objects
+ * @return array
+ *   An array of contribution_recur objects.
  */
 function get_scheduled_contributions($eway_token_clients) {
   if (empty($eway_token_clients)) {
@@ -232,7 +242,7 @@ function get_scheduled_contributions($eway_token_clients) {
 
   $result = array();
 
-  while ( $scheduled_today->fetch() ) {
+  while ($scheduled_today->fetch()) {
     $past_contribution = get_first_contribution_from_recurring($scheduled_today->id);
 
     $new_contribution_record = new CRM_Contribute_BAO_Contribution();
@@ -253,7 +263,7 @@ function get_scheduled_contributions($eway_token_clients) {
     $new_contribution_record->currency = $scheduled_today->currency;
 
     // copy info from previous contribution belonging to the same recurring contribution
-    if ($past_contribution != null) {
+    if ($past_contribution != NULL) {
       $new_contribution_record->contribution_page_id = $past_contribution->contribution_page_id;
       $new_contribution_record->payment_instrument_id = $past_contribution->payment_instrument_id;
       $new_contribution_record->source = $past_contribution->source;
@@ -264,7 +274,7 @@ function get_scheduled_contributions($eway_token_clients) {
     $result[] = array(
       'type' => 'Scheduled',
       'contribution' => clone ($new_contribution_record),
-      'contribution_recur' => clone ($scheduled_today)
+      'contribution_recur' => clone ($scheduled_today),
     );
   }
 
@@ -272,34 +282,7 @@ function get_scheduled_contributions($eway_token_clients) {
 }
 
 /**
- * eway_token_client
- *
- * Creates an eWay SOAP client to the eWay token API
- *
- * @param string $gateway_url
- *          URL of the gateway to connect to (could be the test or live gateway)
- * @param string $eway_customer_id
- *          Your eWay customer ID
- * @param string $username
- *          Your eWay business centre username
- * @param string $password
- *          Your eWay business centre password
- * @return object A SOAP client to the eWay token API
- */
-function eway_token_client($gateway_url, $eway_customer_id, $username, $password) {
-  // Set up SOAP client
-  $soap_client = new nusoap_client($gateway_url, false);
-  $soap_client->namespaces['man'] = 'https://www.eway.com.au/gateway/managedpayment';
-
-  // Set up SOAP headers
-  $headers = "<man:eWAYHeader><man:eWAYCustomerID>" . $eway_customer_id . "</man:eWAYCustomerID><man:Username>" . $username . "</man:Username><man:Password>" . $password . "</man:Password></man:eWAYHeader>";
-  $soap_client->setHeaders($headers);
-
-  return $soap_client;
-}
-
-/**
- * process_eWay_payment
+ * Process_eWay payment.
  *
  * Processes an eWay token payment
  *
@@ -312,19 +295,23 @@ function eway_token_client($gateway_url, $eway_customer_id, $username, $password
  * @param string $invoice_reference
  *          InvoiceReference to send to eWay
  * @param string $invoice_description
- *          InvoiceDescription to send to eWay
+ *   InvoiceDescription to send to eWay
+ *
  * @throws SoapFault exceptions
- * @return array eWay response
+ *
+ * @return array
+ *   eWay response
  */
 function process_eway_payment($soap_client, $managed_customer_id, $amount_in_cents, $invoice_reference, $invoice_description) {
   // PHP bug: https://bugs.php.net/bug.php?id=49669. issue with value greater than 2147483647.
   settype($managed_customer_id, "float");
-
+  // @todo call the new ewayrecurring.payment api to do this & rely on it setting trxn_id
+  // or throwing an Exception.
   $paymentinfo = array(
     'man:managedCustomerID' => $managed_customer_id,
     'man:amount' => $amount_in_cents,
     'man:InvoiceReference' => $invoice_reference,
-    'man:InvoiceDescription' => $invoice_description
+    'man:InvoiceDescription' => $invoice_description,
   );
   $soapaction = 'https://www.eway.com.au/gateway/managedpayment/ProcessPayment';
 
@@ -334,37 +321,39 @@ function process_eway_payment($soap_client, $managed_customer_id, $amount_in_cen
 }
 
 /**
- * complete_contribution
+ * Complete contribution.
  *
- * Marks a contribution as complete
+ * Marks a contribution as complete.
  *
  * @param CRM_Contribute_BAO_Contribution $contribution
- *          The contribution to mark as complete
- * @return CRM_Contribute_BAO_Contribution The contribution object
+ *  The contribution to mark as complete
+ *
+ * @return CRM_Contribute_BAO_Contribution
+ *   The contribution object.
  */
 function complete_contribution($contribution) {
   civicrm_api3('contribution', 'completetransaction', array(
     'id' => $contribution->id,
-    'trxn_id' => $contribution->trxn_id
+    'trxn_id' => $contribution->trxn_id,
   ));
   return $contribution;
 }
 
 /**
- * fail_contribution
- *
- * Marks a contribution as failed
+ * Marks a contribution as failed.
  *
  * @param CRM_Contribute_BAO_Contribution $contribution
- *          The contribution to mark as failed
- * @return CRM_Contribute_BAO_Contribution The contribution object
+ *   The contribution to mark as failed
+ *
+ * @return CRM_Contribute_BAO_Contribution
+ *   The contribution object.
  */
 function fail_contribution($contribution) {
   $contributionStatus = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
 
   $failed = new CRM_Contribute_BAO_Contribution();
   $failed->id = $contribution->id;
-  $failed->find(true);
+  $failed->find(TRUE);
   $failed->contribution_status_id = array_search('Failed', $contributionStatus);
   $failed->receive_date = CRM_Utils_Date::isoToMysql(date('Y-m-d H:i:s'));
   $failed->save();
@@ -373,13 +362,13 @@ function fail_contribution($contribution) {
 }
 
 /**
- * update_recurring_contribution
- *
- * Updates the recurring contribution
+ * Update the recurring contribution.
  *
  * @param object $current_recur
- *          The ID of the recurring contribution
- * @return object The recurring contribution object
+ *   The ID of the recurring contribution
+ *
+ * @return object
+ *   The recurring contribution object.
  */
 function update_recurring_contribution($current_recur) {
   $contributionStatus = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
@@ -408,10 +397,10 @@ function update_recurring_contribution($current_recur) {
     $contributions->find();
     if ($contributions->N >= $current_recur->installments) {
       if (_versionAtLeast(4.4)) {
-        $updated_recur->next_sched_contribution_date = null;
+        $updated_recur->next_sched_contribution_date = NULL;
       }
       else {
-        $updated_recur->next_sched_contribution = null;
+        $updated_recur->next_sched_contribution = NULL;
       }
       $updated_recur->contribution_status_id = array_search('Completed', $contributionStatus);
       $updated_recur->end_date = CRM_Utils_Date::isoToMysql(date('Y-m-d 00:00:00'));
@@ -422,23 +411,19 @@ function update_recurring_contribution($current_recur) {
 }
 
 /**
- * send_receipt_email
- *
- * Sends a receipt for a contribution
+ * Sends a receipt for a contribution.
  *
  * @param string $contribution_id
- *          The ID of the contribution to mark as complete
- * @return bool Success or failure
+ *  The ID of the contribution to mark as complete.
  */
 function send_receipt_email($contribution_id) {
   civicrm_api3('contribution', 'sendconfirmation', array('id' => $contribution_id));
 }
 
 /**
- * Version agnostic receipt sending function
+ * Version agnostic receipt sending function.
  *
- * @param
- *          params
+ * @param array $params
  */
 function _sendReceipt($params) {
   if (_versionAtLeast(4.4)) {
@@ -451,10 +436,11 @@ function _sendReceipt($params) {
 }
 
 /**
- * is version of at least the version provided
+ * Is version of at least the version provided.
  *
- * @param number $version
- * @return boolean
+ * @param string $version
+ *
+ * @return bool
  */
 function _versionAtLeast($version) {
   $codeVersion = explode('.', CRM_Utils_System::version());
