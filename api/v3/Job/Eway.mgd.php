@@ -13,7 +13,7 @@ return array (
       'version' => 3,
       'name' => 'eWAY recurring payments',
       'description' => 'Process any recurring payments due today',
-      'run_frequency' => 'Always',
+      'run_frequency' => 'Daily',
       'api_entity' => 'Job',
       'api_action' => 'Eway',
       'parameters' => '',
