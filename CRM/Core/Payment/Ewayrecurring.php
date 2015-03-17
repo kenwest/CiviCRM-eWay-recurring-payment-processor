@@ -144,6 +144,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
           civicrm_api3('contribution', 'completetransaction', array(
             'id' => $params['contributionID'],
             'trxn_id' => $params['trxn_id'],
+            'is_email_receipt' => empty($params['contributionPageID']) ? FALSE : TRUE,
           ));
 
           // Send recurring Notification email for user.
