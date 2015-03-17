@@ -209,7 +209,8 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
         //  $gateway_URL    = "https://www.eway.com.au/gateway_cvn/xmltest/testpage.asp";
         //  }
 
-        $eWAYRequest->EwayCustomerID($ewayCustomerID); // 8 Chars - ewayCustomerID                 - Required
+        // 8 Chars - ewayCustomerID - Required
+        $eWAYRequest->EwayCustomerID($ewayCustomerID);
         $eWAYRequest->InvoiceAmount($amountInCents); // 12 Chars - ewayTotalAmount  (in cents)    - Required
         $eWAYRequest->PurchaserFirstName($params['first_name']);  // 50 Chars - ewayCustomerFirstName
         $eWAYRequest->PurchaserLastName($params['last_name']); // 50 Chars - ewayCustomerLastName
@@ -219,7 +220,8 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
         $eWAYRequest->InvoiceDescription($params['description']); // 1000 Chars - ewayCustomerInvoiceDescription
         $eWAYRequest->InvoiceReference($params['invoiceID']); // 50 Chars - ewayCustomerInvoiceRef
         $eWAYRequest->CardHolderName($credit_card_name); // 50 Chars - ewayCardHoldersName            - Required
-        $eWAYRequest->CardNumber($params['credit_card_number']); // 20 Chars - ewayCardNumber                 - Required
+        // 20 Chars - ewayCardNumber  - Required
+        $eWAYRequest->CardNumber($params['credit_card_number']);
         $eWAYRequest->CardExpiryMonth($this->getCreditCardExpiryMonth($params));
         // 2 Chars - ewayCardExpiryYear - Required.
         $eWAYRequest->CardExpiryYear($this->getCreditCardExpiryYear($params));
@@ -736,7 +738,9 @@ The CiviCRM eWAY Payment Processor Module
   }
 
   /**
-   * @param $params
+   * Get credit card expiry month.
+   *
+   * @param array $params
    *
    * @return string
    */
