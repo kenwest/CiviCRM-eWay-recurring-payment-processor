@@ -131,3 +131,42 @@ function ewayrecurring_civicrm_alterSettingsFolders(&$metaDataFolders) {
     $metaDataFolders[] = $extDir;
   }
 }
+
+/**
+ * Implements hook_civicrm_buildForm().
+ *
+ * Set default credit card values when in test mode.
+ *
+ * @param string $formName
+ * @param CRM_Core_Form $form
+ */
+function ewayrecurring_civicrm_buildForm($formName, &$form) {
+
+  $formWhiteList = array('CRM_Contribute_Form_Contribution');
+  if (!in_array($formName, $formWhiteList) || !$form->_mode == 'live' || (!civicrm_api3('setting', 'getvalue', array(
+    'group' => 'eway',
+    'name' => 'eway_developer_mode'
+  )))) {
+    return;
+  }
+
+  $processorIDs = implode(',', array_keys($form->_processors));
+  $hasNonEway = CRM_Core_DAO::singleValueQuery("
+    SELECT count(*) FROM civicrm_payment_processor p
+    WHERE class_name NOT LIKE '%Eway%'
+    AND id IN ($processorIDs);
+  ");
+  if ($hasNonEway) {
+    return;
+  }
+  CRM_Core_Session::setStatus(ts('Eway is in test mode. Test credentials have been pre-filled. No live transaction will be submitted'));
+  $defaults['credit_card_number'] = '41111111111111111';
+  $defaults['credit_card_type'] = 'Visa';
+  $defaults['cvv2'] = '567';
+  $defaults['credit_card_exp_date[Y]'] = 21;
+  $defaults['credit_card_exp_date[M]'] = '1';
+  $defaults['credit_card_exp_date'] = array('M' => 1, 'Y' => 2021);
+  $form->setDefaults($defaults);
+
+
+}
