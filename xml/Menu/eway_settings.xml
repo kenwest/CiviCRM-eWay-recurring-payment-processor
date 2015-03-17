@@ -4,6 +4,6 @@
     <path>civicrm/eway/settings</path>
     <page_callback>CRM_Form_EwaySettings</page_callback>
     <title>Eway Settings</title>
-    <access_arguments>administer CiviCRM</access_arguments>
+    <access_arguments>administer payment processors</access_arguments>
   </item>
 </menu>
