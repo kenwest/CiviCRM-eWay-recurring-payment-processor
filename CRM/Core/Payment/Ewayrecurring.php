@@ -735,6 +735,9 @@ The CiviCRM eWAY Payment Processor Module
    * @throws \CRM_Core_Exception
    */
   protected function processSinglePayment(&$params) {
+    if ($this->getDummySuccessResult()) {
+      return $this->getDummySuccessResult();
+    }
     $eWAYRequest = $this->getEwayRequest($params);
     $eWAYResponse = new GatewayResponse();
 
@@ -793,6 +796,26 @@ The CiviCRM eWAY Payment Processor Module
       'trxn_result_code' => $status,
     );
     return $result;
+  }
+
+  /**
+   * If the site is in developer mode then early exit with mock success.
+   *
+   * @return array|bool
+   * @throws \CiviCRM_API3_Exception
+   */
+  protected function getDummySuccessResult() {
+    // If the site is in developer mode we return a mock success.
+    if (civicrm_api3('setting', 'getvalue', array(
+      'group' => 'eway',
+      'name' => 'eway_developer_mode'
+    ))) {
+      return array(
+        'trxn_id' => uniqid(),
+        'trxn_result_code' => TRUE,
+      );
+    }
+    return FALSE;
   }
 
 }

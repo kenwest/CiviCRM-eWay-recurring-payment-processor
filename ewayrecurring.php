@@ -173,7 +173,7 @@ function ewayrecurring_civicrm_buildForm($formName, &$form) {
     return;
   }
   CRM_Core_Session::setStatus(ts('Eway is in test mode. Test credentials have been pre-filled. No live transaction will be submitted'));
-  $defaults['credit_card_number'] = '41111111111111111';
+  $defaults['credit_card_number'] = '4444333322221111';
   $defaults['credit_card_type'] = 'Visa';
   $defaults['cvv2'] = '567';
   $defaults['credit_card_exp_date[Y]'] = 21;
