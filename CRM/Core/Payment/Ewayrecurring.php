@@ -161,68 +161,10 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
       }
 
     }
-    // This is a one off payment, most of this is lifted straight from the original code, so I wont document it.
+    // This is a one off payment. This code is similar to in core.
     else {
       try {
-
-        $eWAYRequest = $this->getEwayRequest($params);
-        $eWAYResponse = new GatewayResponse();
-
-        if (($eWAYResponse == NULL) || (!($eWAYResponse instanceof GatewayResponse))) {
-          throw new CRM_Core_Exception("Error: Unable to create eWAY Response object.");
-        }
-
-        //----------------------------------------------------------------------------------------------------
-        // Convert to XML and send the payment information
-        //----------------------------------------------------------------------------------------------------
-        $requestXML = $eWAYRequest->ToXML();
-        $responseData = $this->callEwayGateway($requestXML);
-
-        //----------------------------------------------------------------------------------------------------
-        // Payment successfully sent to gateway - process the response now
-        //----------------------------------------------------------------------------------------------------
-        $eWAYResponse->ProcessResponse($responseData);
-
-        //----------------------------------------------------------------------------------------------------
-        // See if we got an OK result - if not tell 'em and bail out
-        //----------------------------------------------------------------------------------------------------
-        if (self::isError($eWAYResponse)) {
-          $eWayTrxnError = $eWAYResponse->Error();
-
-          if (substr($eWayTrxnError, 0, 6) == "Error:") {
-            throw new CRM_Core_Exception($eWayTrxnError);
-          }
-          $eWayErrorCode = substr($eWayTrxnError, 0, 2);
-          $eWayErrorDesc = substr($eWayTrxnError, 3);
-
-          throw new CRM_Core_Exception("Error: [" . $eWayErrorCode . "] - " . $eWayErrorDesc . ".");
-        }
-
-        //-----------------------------------------------------------------------------------------------------
-        // Cross-Check - the unique 'TrxnReference' we sent out should match the just received 'TrxnReference'
-        //
-        // PLEASE NOTE: If this occurs (which is highly unlikely) its a serious error as it would mean we have
-        // received an OK status from eWAY, but their Gateway has not returned the correct unique
-        // token - ie something is broken, BUT money has been taken from the client's account,
-        // so we can't very well error-out as CiviCRM will then not process the registration.
-        // There is an error message commented out here but my preferred response to this unlikely
-        // possibility is to email 'support@eWAY.com.au'
-        //-----------------------------------------------------------------------------------------------------
-        $eWayTrxnReference_OUT = $params['invoiceID'];
-        $eWayTrxnReference_IN = $eWAYResponse->InvoiceReference();
-
-        if ($eWayTrxnReference_IN != $eWayTrxnReference_OUT) {
-          // return self::errorExit( 9009, "Error: Unique Trxn code was not returned by eWAY Gateway. This is extremely unusual! Please contact the administrator of this site immediately with details of this transaction.");
-          self::send_alert_email($eWAYResponse->TransactionNumber(), $eWayTrxnReference_OUT, $eWayTrxnReference_IN, $requestXML, $responseData);
-        }
-
-        $status = ($eWAYResponse->BeagleScore()) ? ($eWAYResponse->Status() . ': ' . $eWAYResponse->BeagleScore()) : $eWAYResponse->Status();
-        $result = array(
-          'gross_amount' => $eWAYResponse->Amount(),
-          'trxn_id' => $eWAYResponse->TransactionNumber(),
-          'trxn_result_code' => $status;
-        );
-
+        $result = $this->processSinglePayment($params);
         $params = array_merge($params, $result);
 
       }
@@ -781,6 +723,76 @@ The CiviCRM eWAY Payment Processor Module
       throw new CRM_Core_Exception('It appears that this transaction is a duplicate.  Have you already submitted the form once?  If so there may have been a connection problem.  Check your email for a receipt from eWAY.  If you do not receive a receipt within 2 hours you can try your transaction again.  If you continue to have problems please contact the site administrator.');
     }
     return $eWAYRequest;
+  }
+
+  /**
+   * Process a one-off payment and return result or throw exception.
+   *
+   * @param $params
+   *
+   * @return array
+   *   Result of payment.
+   * @throws \CRM_Core_Exception
+   */
+  protected function processSinglePayment(&$params) {
+    $eWAYRequest = $this->getEwayRequest($params);
+    $eWAYResponse = new GatewayResponse();
+
+    if (($eWAYResponse == NULL) || (!($eWAYResponse instanceof GatewayResponse))) {
+      throw new CRM_Core_Exception("Error: Unable to create eWAY Response object.");
+    }
+
+    //----------------------------------------------------------------------------------------------------
+    // Convert to XML and send the payment information
+    //----------------------------------------------------------------------------------------------------
+    $requestXML = $eWAYRequest->ToXML();
+    $responseData = $this->callEwayGateway($requestXML);
+
+    //----------------------------------------------------------------------------------------------------
+    // Payment successfully sent to gateway - process the response now
+    //----------------------------------------------------------------------------------------------------
+    $eWAYResponse->ProcessResponse($responseData);
+
+    //----------------------------------------------------------------------------------------------------
+    // See if we got an OK result - if not tell 'em and bail out
+    //----------------------------------------------------------------------------------------------------
+    if (self::isError($eWAYResponse)) {
+      $eWayTrxnError = $eWAYResponse->Error();
+
+      if (substr($eWayTrxnError, 0, 6) == "Error:") {
+        throw new CRM_Core_Exception($eWayTrxnError);
+      }
+      $eWayErrorCode = substr($eWayTrxnError, 0, 2);
+      $eWayErrorDesc = substr($eWayTrxnError, 3);
+
+      throw new CRM_Core_Exception("Error: [" . $eWayErrorCode . "] - " . $eWayErrorDesc . ".");
+    }
+
+    //-----------------------------------------------------------------------------------------------------
+    // Cross-Check - the unique 'TrxnReference' we sent out should match the just received 'TrxnReference'
+    //
+    // PLEASE NOTE: If this occurs (which is highly unlikely) its a serious error as it would mean we have
+    // received an OK status from eWAY, but their Gateway has not returned the correct unique
+    // token - ie something is broken, BUT money has been taken from the client's account,
+    // so we can't very well error-out as CiviCRM will then not process the registration.
+    // There is an error message commented out here but my preferred response to this unlikely
+    // possibility is to email 'support@eWAY.com.au'
+    //-----------------------------------------------------------------------------------------------------
+    $eWayTrxnReference_OUT = $params['invoiceID'];
+    $eWayTrxnReference_IN = $eWAYResponse->InvoiceReference();
+
+    if ($eWayTrxnReference_IN != $eWayTrxnReference_OUT) {
+      // return self::errorExit( 9009, "Error: Unique Trxn code was not returned by eWAY Gateway. This is extremely unusual! Please contact the administrator of this site immediately with details of this transaction.");
+      self::send_alert_email($eWAYResponse->TransactionNumber(), $eWayTrxnReference_OUT, $eWayTrxnReference_IN, $requestXML, $responseData);
+    }
+
+    $status = ($eWAYResponse->BeagleScore()) ? ($eWAYResponse->Status() . ': ' . $eWAYResponse->BeagleScore()) : $eWAYResponse->Status();
+    $result = array(
+      'gross_amount' => $eWAYResponse->Amount(),
+      'trxn_id' => $eWAYResponse->TransactionNumber(),
+      'trxn_result_code' => $status,
+    );
+    return $result;
   }
 
 }
