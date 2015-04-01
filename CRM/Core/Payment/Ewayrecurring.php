@@ -172,8 +172,6 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
     // This is a one off payment, most of this is lifted straight from the original code, so I wont document it.
     else {
       try {
-        // eWAY Gateway URL.
-        $gateway_URL = $this->_paymentProcessor['url_site'];
         $eWAYRequest = new GatewayRequest();
 
         if (($eWAYRequest == NULL) || (!($eWAYRequest instanceof GatewayRequest))) {
@@ -250,7 +248,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
         //----------------------------------------------------------------------------------------------------
         $requestXML = $eWAYRequest->ToXML();
         try {
-          $responseData = $this->callEwayGateway($gateway_URL, $requestXML);
+          $responseData = $this->callEwayGateway($requestXML);
         }
         catch (CRM_Core_Exception $e) {
           throw new CRM_Core_Exception($e->getMessage());
@@ -549,14 +547,13 @@ The CiviCRM eWAY Payment Processor Module
   /**
    * Pass xml to eWay gateway and return response if the call succeeds.
    *
-   * @param $gateway_URL
    * @param $requestXML
    *
    * @return mixed
    * @throws \CRM_Core_Exception
    */
-  protected function callEwayGateway($gateway_URL, $requestXML) {
-    $submit = curl_init($gateway_URL);
+  protected function callEwayGateway($requestXML) {
+    $submit = curl_init($this->_paymentProcessor['url_site']);
 
     if (!$submit) {
       throw new CRM_Core_Exception('Could not initiate connection to payment gateway');
