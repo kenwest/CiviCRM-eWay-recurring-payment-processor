@@ -164,81 +164,12 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
     // This is a one off payment, most of this is lifted straight from the original code, so I wont document it.
     else {
       try {
-        $eWAYRequest = new GatewayRequest();
 
-        if (($eWAYRequest == NULL) || (!($eWAYRequest instanceof GatewayRequest))) {
-          throw new CRM_Core_Exception("Error: Unable to create eWAY Request object.");
-        }
-
+        $eWAYRequest = $this->getEwayRequest($params);
         $eWAYResponse = new GatewayResponse();
 
         if (($eWAYResponse == NULL) || (!($eWAYResponse instanceof GatewayResponse))) {
           throw new CRM_Core_Exception("Error: Unable to create eWAY Response object.");
-        }
-
-        //-------------------------------------------------------------
-        // Prepare some composite data from _paymentProcessor fields
-        //-------------------------------------------------------------
-        $fullAddress = $params['street_address'] . ", " . $params['city'] . ", " . $params['state_province'] . ".";
-
-        //----------------------------------------------------------------------------------------------------
-        // We use CiviCRM's params 'invoiceID' as the unique transaction token to feed to eWAY
-        // Trouble is that eWAY only accepts 16 chars for the token, while CiviCRM's invoiceID is an 32.
-        // As its made from a "$invoiceID = md5(uniqid(rand(), true));" then using the first 16 chars
-        // should be alright
-        //----------------------------------------------------------------------------------------------------
-        $uniqueTrxnNum = substr($params['invoiceID'], 0, 16);
-
-        //----------------------------------------------------------------------------------------------------
-        // OPTIONAL: If TEST Card Number force an Override of URL and CustomerID.
-        // During testing CiviCRM once used the LIVE URL.
-        // This code can be uncommented to override the LIVE URL that if CiviCRM does that again.
-        //----------------------------------------------------------------------------------------------------
-        //  if ( ( $gateway_URL == "https://www.eway.com.au/gateway_cvn/xmlpayment.asp")
-        //  && ($params['credit_card_number'] == "4444333322221111" )) {
-        //  $ewayCustomerID = "87654321";
-        //  $gateway_URL    = "https://www.eway.com.au/gateway_cvn/xmltest/testpage.asp";
-        //  }
-
-        // 8 Chars - ewayCustomerID - Required
-        $eWAYRequest->EwayCustomerID($this->_paymentProcessor['subject']);
-        // 12 Chars - ewayTotalAmount (in cents) - Required
-        $eWAYRequest->InvoiceAmount($this->getAmountInCents($params));
-        $eWAYRequest->PurchaserFirstName($params['first_name']);  // 50 Chars - ewayCustomerFirstName
-        $eWAYRequest->PurchaserLastName($params['last_name']); // 50 Chars - ewayCustomerLastName
-        $eWAYRequest->PurchaserEmailAddress($params['email']); // 50 Chars - ewayCustomerEmail
-        $eWAYRequest->PurchaserAddress($fullAddress); // 255 Chars - ewayCustomerAddress
-        $eWAYRequest->PurchaserPostalCode($params['postal_code']); // 6 Chars - ewayCustomerPostcode
-        $eWAYRequest->InvoiceDescription($params['description']); // 1000 Chars - ewayCustomerInvoiceDescription
-        $eWAYRequest->InvoiceReference($params['invoiceID']); // 50 Chars - ewayCustomerInvoiceRef
-        // 50 Chars - ewayCardHoldersName - Required
-        $eWAYRequest->CardHolderName($this->getCreditCardName($params));
-        // 20 Chars - ewayCardNumber  - Required
-        $eWAYRequest->CardNumber($params['credit_card_number']);
-        $eWAYRequest->CardExpiryMonth($this->getCreditCardExpiryMonth($params));
-        // 2 Chars - ewayCardExpiryYear - Required.
-        $eWAYRequest->CardExpiryYear($this->getCreditCardExpiryYear($params));
-        $eWAYRequest->CVN($params['cvv2']); // 4 Chars - ewayCVN                        - Required if CVN Gateway used
-        // 16 Chars - ewayTrxnNumber
-        $eWAYRequest->TransactionNumber($uniqueTrxnNum);
-        // 255 Chars - ewayOption1
-        $eWAYRequest->EwayOption1('');
-        // 255 Chars - ewayOption2
-        $eWAYRequest->EwayOption2('');
-        // 255 Chars - ewayOption3
-        $eWAYRequest->EwayOption3('');
-        $eWAYRequest->CustomerBillingCountry($params['country']);
-
-        $eWAYRequest->CustomerIPAddress($params['ip_address']);
-
-        // Allow further manipulation of the arguments via custom hooks ..
-        CRM_Utils_Hook::alterPaymentProcessorParams($this, $params, $eWAYRequest);
-
-        //----------------------------------------------------------------------------------------------------
-        // Check to see if we have a duplicate before we send
-        //----------------------------------------------------------------------------------------------------
-        if ($this->checkDupe($params['invoiceID'])) {
-          return self::errorExit(9003, 'It appears that this transaction is a duplicate.  Have you already submitted the form once?  If so there may have been a connection problem.  Check your email for a receipt from eWAY.  If you do not receive a receipt within 2 hours you can try your transaction again.  If you continue to have problems please contact the site administrator.');
         }
 
         //----------------------------------------------------------------------------------------------------
@@ -282,7 +213,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
         // There is an error message commented out here but my preferred response to this unlikely
         // possibility is to email 'support@eWAY.com.au'
         //-----------------------------------------------------------------------------------------------------
-        $eWayTrxnReference_OUT = $eWAYRequest->GetTransactionNumber();
+        $eWayTrxnReference_OUT = $params['invoiceID'];
         $eWayTrxnReference_IN = $eWAYResponse->InvoiceReference();
 
         if ($eWayTrxnReference_IN != $eWayTrxnReference_OUT) {
@@ -770,6 +701,92 @@ The CiviCRM eWAY Payment Processor Module
   protected function getAmountInCents(&$params) {
     $amountInCents = round(((float) $params['amount']) * 100);
     return $amountInCents;
+  }
+
+  /**
+   * Get request to send to eWay.
+   *
+   * @param $params
+   *   Form parameters - this could be altered by hook so is a reference
+   *
+   * @return GatewayRequest
+   * @throws \CRM_Core_Exception
+   */
+  protected function getEwayRequest(&$params) {
+    $eWAYRequest = new GatewayRequest();
+
+    if (($eWAYRequest == NULL) || (!($eWAYRequest instanceof GatewayRequest))) {
+      throw new CRM_Core_Exception("Error: Unable to create eWAY Request object.");
+    }
+
+    $fullAddress = $params['street_address'] . ", " . $params['city'] . ", " . $params['state_province'] . ".";
+
+    //----------------------------------------------------------------------------------------------------
+    // We use CiviCRM's params 'invoiceID' as the unique transaction token to feed to eWAY
+    // Trouble is that eWAY only accepts 16 chars for the token, while CiviCRM's invoiceID is an 32.
+    // As its made from a "$invoiceID = md5(uniqid(rand(), true));" then using the first 16 chars
+    // should be alright
+    //----------------------------------------------------------------------------------------------------
+    $uniqueTrxnNum = substr($params['invoiceID'], 0, 16);
+
+    //----------------------------------------------------------------------------------------------------
+    // OPTIONAL: If TEST Card Number force an Override of URL and CustomerID.
+    // During testing CiviCRM once used the LIVE URL.
+    // This code can be uncommented to override the LIVE URL that if CiviCRM does that again.
+    //----------------------------------------------------------------------------------------------------
+    //  if ( ( $gateway_URL == "https://www.eway.com.au/gateway_cvn/xmlpayment.asp")
+    //  && ($params['credit_card_number'] == "4444333322221111" )) {
+    //  $ewayCustomerID = "87654321";
+    //  $gateway_URL    = "https://www.eway.com.au/gateway_cvn/xmltest/testpage.asp";
+    //  }
+
+    // 8 Chars - ewayCustomerID - Required
+    $eWAYRequest->EwayCustomerID($this->_paymentProcessor['subject']);
+    // 12 Chars - ewayTotalAmount (in cents) - Required
+    $eWAYRequest->InvoiceAmount($this->getAmountInCents($params));
+    // 50 Chars - ewayCustomerFirstName
+    $eWAYRequest->PurchaserFirstName($params['first_name']);
+    // 50 Chars - ewayCustomerLastName
+    $eWAYRequest->PurchaserLastName($params['last_name']);
+    // 50 Chars - ewayCustomerEmail
+    $eWAYRequest->PurchaserEmailAddress(CRM_Utils_Array::value('email', $params));
+    // 255 Chars - ewayCustomerAddress
+    $eWAYRequest->PurchaserAddress($fullAddress);
+    // 6 Chars - ewayCustomerPostcode
+    $eWAYRequest->PurchaserPostalCode($params['postal_code']);
+    // 1000 Chars - ewayCustomerInvoiceDescription
+    $eWAYRequest->InvoiceDescription($params['description']);
+    // 50 Chars - ewayCustomerInvoiceRef
+    $eWAYRequest->InvoiceReference($params['invoiceID']);
+    // 50 Chars - ewayCardHoldersName - Required
+    $eWAYRequest->CardHolderName($this->getCreditCardName($params));
+    // 20 Chars - ewayCardNumber  - Required
+    $eWAYRequest->CardNumber($params['credit_card_number']);
+    $eWAYRequest->CardExpiryMonth($this->getCreditCardExpiryMonth($params));
+    // 2 Chars - ewayCardExpiryYear - Required.
+    $eWAYRequest->CardExpiryYear($this->getCreditCardExpiryYear($params));
+    // 4 Chars - ewayCVN - Required if CVN Gateway used
+    $eWAYRequest->CVN($params['cvv2']);
+    // 16 Chars - ewayTrxnNumber
+    $eWAYRequest->TransactionNumber($uniqueTrxnNum);
+    // 255 Chars - ewayOption1
+    $eWAYRequest->EwayOption1('');
+    // 255 Chars - ewayOption2
+    $eWAYRequest->EwayOption2('');
+    // 255 Chars - ewayOption3
+    $eWAYRequest->EwayOption3('');
+    $eWAYRequest->CustomerBillingCountry($params['country']);
+
+    $eWAYRequest->CustomerIPAddress($params['ip_address']);
+
+    // Allow further manipulation of the arguments via custom hooks ..
+    CRM_Utils_Hook::alterPaymentProcessorParams($this, $params, $eWAYRequest);
+
+    // Check for a duplicate after the hook has been called.
+    if ($this->checkDupe($params['invoiceID'])) {
+      throw new CRM_Core_Exception('It appears that this transaction is a duplicate.  Have you already submitted the form once?  If so there may have been a connection problem.  Check your email for a receipt from eWAY.  If you do not receive a receipt within 2 hours you can try your transaction again.  If you continue to have problems please contact the site administrator.');
+    }
+    return $eWAYRequest;
   }
 
 }
