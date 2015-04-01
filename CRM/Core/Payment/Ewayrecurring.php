@@ -83,14 +83,6 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
       CRM_Core_Error::fatal(ts('eWAY - Gateway requires curl with SSL support'));
     }
 
-    // eWAY Client ID is in subject.
-    $ewayCustomerID = $this->_paymentProcessor['subject'];
-
-    // This data is shared across one off and recurring payments.
-    $txtOptions    = "";
-    $amountInCents = $this->getAmountInCents($params);
-    $credit_card_name = $this->getCreditCardName($params);
-
     /*
      * OPTIONAL: If TEST Card Number force an Override of URL and CustomerID.
      * During testing CiviCRM once used the LIVE URL.
@@ -209,8 +201,9 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
         //  }
 
         // 8 Chars - ewayCustomerID - Required
-        $eWAYRequest->EwayCustomerID($ewayCustomerID);
-        $eWAYRequest->InvoiceAmount($amountInCents); // 12 Chars - ewayTotalAmount  (in cents)    - Required
+        $eWAYRequest->EwayCustomerID($this->_paymentProcessor['subject']);
+        // 12 Chars - ewayTotalAmount (in cents) - Required
+        $eWAYRequest->InvoiceAmount($this->getAmountInCents($params));
         $eWAYRequest->PurchaserFirstName($params['first_name']);  // 50 Chars - ewayCustomerFirstName
         $eWAYRequest->PurchaserLastName($params['last_name']); // 50 Chars - ewayCustomerLastName
         $eWAYRequest->PurchaserEmailAddress($params['email']); // 50 Chars - ewayCustomerEmail
@@ -218,17 +211,22 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
         $eWAYRequest->PurchaserPostalCode($params['postal_code']); // 6 Chars - ewayCustomerPostcode
         $eWAYRequest->InvoiceDescription($params['description']); // 1000 Chars - ewayCustomerInvoiceDescription
         $eWAYRequest->InvoiceReference($params['invoiceID']); // 50 Chars - ewayCustomerInvoiceRef
-        $eWAYRequest->CardHolderName($credit_card_name); // 50 Chars - ewayCardHoldersName            - Required
+        // 50 Chars - ewayCardHoldersName - Required
+        $eWAYRequest->CardHolderName($this->getCreditCardName($params));
         // 20 Chars - ewayCardNumber  - Required
         $eWAYRequest->CardNumber($params['credit_card_number']);
         $eWAYRequest->CardExpiryMonth($this->getCreditCardExpiryMonth($params));
         // 2 Chars - ewayCardExpiryYear - Required.
         $eWAYRequest->CardExpiryYear($this->getCreditCardExpiryYear($params));
         $eWAYRequest->CVN($params['cvv2']); // 4 Chars - ewayCVN                        - Required if CVN Gateway used
-        $eWAYRequest->TransactionNumber($uniqueTrxnNum); // 16 Chars - ewayTrxnNumber
-        $eWAYRequest->EwayOption1($txtOptions); // 255 Chars - ewayOption1
-        $eWAYRequest->EwayOption2($txtOptions); // 255 Chars - ewayOption2
-        $eWAYRequest->EwayOption3($txtOptions); // 255 Chars - ewayOption3
+        // 16 Chars - ewayTrxnNumber
+        $eWAYRequest->TransactionNumber($uniqueTrxnNum);
+        // 255 Chars - ewayOption1
+        $eWAYRequest->EwayOption1('');
+        // 255 Chars - ewayOption2
+        $eWAYRequest->EwayOption2('');
+        // 255 Chars - ewayOption3
+        $eWAYRequest->EwayOption3('');
         $eWAYRequest->CustomerBillingCountry($params['country']);
 
         $eWAYRequest->CustomerIPAddress($params['ip_address']);
