@@ -176,12 +176,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
         // Convert to XML and send the payment information
         //----------------------------------------------------------------------------------------------------
         $requestXML = $eWAYRequest->ToXML();
-        try {
-          $responseData = $this->callEwayGateway($requestXML);
-        }
-        catch (CRM_Core_Exception $e) {
-          throw new CRM_Core_Exception($e->getMessage());
-        }
+        $responseData = $this->callEwayGateway($requestXML);
 
         //----------------------------------------------------------------------------------------------------
         // Payment successfully sent to gateway - process the response now
@@ -221,16 +216,15 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
           self::send_alert_email($eWAYResponse->TransactionNumber(), $eWayTrxnReference_OUT, $eWayTrxnReference_IN, $requestXML, $responseData);
         }
 
-        //=============
-        // Success !
-        //=============
-        $beagleStatus = $eWAYResponse->BeagleScore();
-        if (!empty($beagleStatus)) {
-          $beagleStatus = ": " . $beagleStatus;
-        }
-        $params['trxn_result_code'] = $eWAYResponse->Status() . $beagleStatus;
-        $params['gross_amount'] = $eWAYResponse->Amount();
-        $params['trxn_id'] = $eWAYResponse->TransactionNumber();
+        $status = ($eWAYResponse->BeagleScore()) ? ($eWAYResponse->Status() . ': ' . $eWAYResponse->BeagleScore()) : $eWAYResponse->Status();
+        $result = array(
+          'gross_amount' => $eWAYResponse->Amount(),
+          'trxn_id' => $eWAYResponse->TransactionNumber(),
+          'trxn_result_code' => $status;
+        );
+
+        $params = array_merge($params, $result);
+
       }
       catch (CRM_Core_Exception $e) {
         return self::errorExit(9001, $e->getMessage());
