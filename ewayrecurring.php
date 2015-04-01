@@ -77,7 +77,7 @@ function ewayrecurring_civicrm_managed(&$entities) {
     civicrm_api3('job', 'create', array());
   }
   catch (Exception $e) {
-    if(stristr($e->getMessage(), 'does not exist')) {
+    if (stristr($e->getMessage(), 'does not exist')) {
       return;
     }
   }
@@ -96,11 +96,11 @@ function ewayrecurring_civicrm_navigationMenu(&$menu) {
   $parentID = CRM_Core_DAO::singleValueQuery(
     "SELECT id
      FROM civicrm_navigation n
-     WHERE  n.name = 'System Settings'
+     WHERE  n.name = 'Administer'
        AND n.domain_id = " . CRM_Core_Config::domainID()
   );
-  $navID = $maxID + 1;
-  $menu[$navID] = array(
+  $navID = $maxID + 288;
+  $navigationMenu = array(
     'attributes' => array(
       'label' => 'Eway',
       'name' => 'eway',
@@ -113,10 +113,18 @@ function ewayrecurring_civicrm_navigationMenu(&$menu) {
       'navID' => $navID,
     ),
   );
+  if ($parentID) {
+    $menu[$parentID]['child'][$navID] = $navigationMenu;
+  }
+  else {
+    $menu[$navID] = $navigationMenu;
+  }
 }
 
 /**
- * Implementation of hook_civicrm_config().
+ * Implements of hook_civicrm_config().
+ *
+ * @param array $metaDataFolders
  */
 function ewayrecurring_civicrm_alterSettingsFolders(&$metaDataFolders) {
   static $configured = FALSE;
@@ -138,12 +146,17 @@ function ewayrecurring_civicrm_alterSettingsFolders(&$metaDataFolders) {
  * Set default credit card values when in test mode.
  *
  * @param string $formName
- * @param CRM_Core_Form $form
+ * @param CRM_Contribute_Form_Contribution|CRM_Event_Form_Participant $form
  */
 function ewayrecurring_civicrm_buildForm($formName, &$form) {
 
-  $formWhiteList = array('CRM_Contribute_Form_Contribution');
-  if (!in_array($formName, $formWhiteList) || !$form->_mode == 'live' || (!civicrm_api3('setting', 'getvalue', array(
+  $formWhiteList = array('CRM_Contribute_Form_Contribution', 'CRM_Event_Form_Participant');
+  if (!in_array($formName, $formWhiteList)) {
+    return;
+  }
+
+  //CRM_Core_Resources::singleton()->addScriptUrl('https://secure.ewaypayments.com/scripts/eCrypt.js');
+  if (!$form->_mode == 'live' || (!civicrm_api3('setting', 'getvalue', array(
     'group' => 'eway',
     'name' => 'eway_developer_mode'
   )))) {
