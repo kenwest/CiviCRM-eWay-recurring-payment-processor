@@ -735,10 +735,11 @@ The CiviCRM eWAY Payment Processor Module
    * @throws \CRM_Core_Exception
    */
   protected function processSinglePayment(&$params) {
+
+    $eWAYRequest = $this->getEwayRequest($params);
     if ($this->getDummySuccessResult()) {
       return $this->getDummySuccessResult();
     }
-    $eWAYRequest = $this->getEwayRequest($params);
     $eWAYResponse = new GatewayResponse();
 
     if (($eWAYResponse == NULL) || (!($eWAYResponse instanceof GatewayResponse))) {
