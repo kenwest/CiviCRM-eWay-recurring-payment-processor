@@ -255,7 +255,8 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
    */
   public function checkConfig() {
     $errorMsg = array();
-
+    // Not sure why this is not being called but appears that subject is
+    // required if an @ is in the username (new style)
     if (empty($this->_paymentProcessor['subject'])) {
       $errorMsg[] = ts('eWAY CustomerID is not set for this payment processor');
     }
