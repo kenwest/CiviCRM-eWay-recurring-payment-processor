@@ -77,9 +77,109 @@ function ewayrecurring_civicrm_managed(&$entities) {
     civicrm_api3('job', 'create', array());
   }
   catch (Exception $e) {
-    if(stristr($e->getMessage(), 'does not exist')) {
+    if (stristr($e->getMessage(), 'does not exist')) {
       return;
     }
   }
   return _ewayrecurring_civix_civicrm_managed($entities);
+}
+
+/**
+ * Implements hook_civicrm_navigationMenu().
+ *
+ * Adds eway settings page to the navigation menu.
+ *
+ * @param array $menu
+ */
+function ewayrecurring_civicrm_navigationMenu(&$menu) {
+  $maxID = CRM_Core_DAO::singleValueQuery("SELECT max(id) FROM civicrm_navigation");
+  $parentID = CRM_Core_DAO::singleValueQuery(
+    "SELECT id
+     FROM civicrm_navigation n
+     WHERE  n.name = 'Administer'
+       AND n.domain_id = " . CRM_Core_Config::domainID()
+  );
+  $navID = $maxID + 288;
+  $navigationMenu = array(
+    'attributes' => array(
+      'label' => 'Eway',
+      'name' => 'eway',
+      'url' => 'civicrm/eway/settings',
+      'permission' => 'administer CiviCRM',
+      'operator' => NULL,
+      'separator' => NULL,
+      'parentID' => $parentID,
+      'active' => 1,
+      'navID' => $navID,
+    ),
+  );
+  if ($parentID) {
+    $menu[$parentID]['child'][$navID] = $navigationMenu;
+  }
+  else {
+    $menu[$navID] = $navigationMenu;
+  }
+}
+
+/**
+ * Implements of hook_civicrm_config().
+ *
+ * @param array $metaDataFolders
+ */
+function ewayrecurring_civicrm_alterSettingsFolders(&$metaDataFolders) {
+  static $configured = FALSE;
+  if ($configured) {
+    return;
+  }
+  $configured = TRUE;
+
+  $extRoot = dirname(__FILE__) . DIRECTORY_SEPARATOR;
+  $extDir = $extRoot . 'settings';
+  if (!in_array($extDir, $metaDataFolders)) {
+    $metaDataFolders[] = $extDir;
+  }
+}
+
+/**
+ * Implements hook_civicrm_buildForm().
+ *
+ * Set default credit card values when in test mode.
+ *
+ * @param string $formName
+ * @param CRM_Contribute_Form_Contribution|CRM_Event_Form_Participant $form
+ */
+function ewayrecurring_civicrm_buildForm($formName, &$form) {
+
+  $formWhiteList = array('CRM_Contribute_Form_Contribution', 'CRM_Event_Form_Participant');
+  if (!in_array($formName, $formWhiteList)) {
+    return;
+  }
+
+  //CRM_Core_Resources::singleton()->addScriptUrl('https://secure.ewaypayments.com/scripts/eCrypt.js');
+  if (!$form->_mode == 'live' || (!civicrm_api3('setting', 'getvalue', array(
+    'group' => 'eway',
+    'name' => 'eway_developer_mode'
+  )))) {
+    return;
+  }
+
+  $processorIDs = implode(',', array_keys($form->_processors));
+  $hasNonEway = CRM_Core_DAO::singleValueQuery("
+    SELECT count(*) FROM civicrm_payment_processor p
+    WHERE class_name NOT LIKE '%Eway%'
+    AND id IN ($processorIDs);
+  ");
+  if ($hasNonEway) {
+    return;
+  }
+  CRM_Core_Session::setStatus(ts('Eway is in test mode. Test credentials have been pre-filled. No live transaction will be submitted'));
+  $defaults['credit_card_number'] = '4444333322221111';
+  $defaults['credit_card_type'] = 'Visa';
+  $defaults['cvv2'] = '567';
+  $defaults['credit_card_exp_date[Y]'] = 21;
+  $defaults['credit_card_exp_date[M]'] = '1';
+  $defaults['credit_card_exp_date'] = array('M' => 1, 'Y' => 2021);
+  $form->setDefaults($defaults);
+
+
 }
