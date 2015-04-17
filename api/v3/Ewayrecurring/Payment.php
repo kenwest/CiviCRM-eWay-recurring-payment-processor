@@ -12,6 +12,15 @@
  *   API Result array
  */
 function civicrm_api3_ewayrecurring_payment($params) {
+  // If the site is in developer mode we return a mock success.
+  if (civicrm_api3('setting', 'getvalue', array(
+    'group' => 'eway',
+    'name' => 'eway_developer_mode'
+  ))) {
+    return civicrm_api3_create_success(array(
+      $params['managed_customer_id'] => array('trxn_id' => uniqid())
+    ), $params);
+  }
 
   $client = CRM_Core_Payment_EwayUtils::getClient($params['payment_processor_id']);
   $endPoint = 'https://www.eway.com.au/gateway/managedpayment/ProcessPayment';

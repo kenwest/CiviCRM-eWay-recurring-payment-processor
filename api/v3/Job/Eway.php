@@ -72,27 +72,33 @@ function civicrm_api3_job_eway($params) {
 function _civicrm_api3_job_eway_process_contribution($eway_token_clients, $instance) {
   $apiResult = array();
 
-  // Process the payment
+  // Process the payment.
   $apiResult[] = "Processing payment for " . $instance['type'] . " contribution ID: " . $instance['contribution']->id;
   $amount_in_cents = str_replace('.', '', $instance['contribution']->total_amount);
+  $managed_customer_id = $instance['contribution_recur']->processor_id;
 
-  $result = process_eway_payment(
-    $eway_token_clients[$instance['contribution_recur']->payment_processor_id],
-    $instance['contribution_recur']->processor_id, $amount_in_cents,
-    $instance['contribution']->invoice_id, $instance['contribution']->source
-  );
+  try {
+    $result = civicrm_api3('ewayrecurring', 'payment', array(
+      'invoice_id' => $instance['contribution']->invoice_id,
+      'amount_in_cents' => $amount_in_cents,
+      'managed_customer_id' => $managed_customer_id,
+      'description' => !empty($instance['contribution']->source) ? $instance['contribution']->source : ts('Recurring payment'),
+      'payment_processor_id' => $instance['contribution_recur']->payment_processor_id,
+    ));
 
-  // Process the contribution as either Completed or Failed.
-  // @todo call the new ewayrecurring.payment api to do this & rely on it setting trxn_id
-  // or throwing an Exception.
-  if ($result['ewayTrxnStatus'] == 'True') {
+    // Process the contribution as either Completed or Failed.
     $apiResult[] = "Successfully processed payment for " . $instance['type'] . " contribution ID: " . $instance['contribution']->id;
     $apiResult[] = "Marking contribution as complete";
-    $instance['contribution']->trxn_id = $result['ewayTrxnNumber'];
-    complete_contribution($instance['contribution']);
+    $instance['contribution']->trxn_id = $result['values'][$managed_customer_id]['trxn_id'];
+    if (empty($instance['contribution']->id)) {
+      repeat_contribution($instance['contribution'], 'Completed');
+    }
+    else {
+      complete_contribution($instance['contribution']);
+    }
     $instance['contribution_recur']->failure_count = 0;
   }
-  else {
+  catch (CiviCRM_API3_Exception $e) {
     $apiResult[] = "ERROR: failed to process payment for " . $instance['type'] . " contribution ID: " . $instance['contribution']->id;
     $apiResult[] = 'eWAY managed customer: ' . $instance['contribution_recur']->processor_id;
     $apiResult[] = 'eWAY response: ' . $result['faultstring'];
@@ -269,7 +275,6 @@ function get_scheduled_contributions($eway_token_clients) {
       $new_contribution_record->source = $past_contribution->source;
       $new_contribution_record->address_id = $past_contribution->address_id;
     }
-    $new_contribution_record->save();
 
     $result[] = array(
       'type' => 'Scheduled',
@@ -340,20 +345,53 @@ function complete_contribution($contribution) {
 }
 
 /**
- * Marks a contribution as failed.
+ * Repeat contribution.
+ *
+ * Marks a contribution as complete.
  *
  * @param CRM_Contribute_BAO_Contribution $contribution
+ *  The contribution to mark as complete
+ *
+ * @param $status_id
+ *
+ * @return \CRM_Contribute_BAO_Contribution
+ *   The contribution object.
+ *
+ * @throws \CiviCRM_API3_Exception
+ */
+function repeat_contribution($contribution, $status_id) {
+  $actions = civicrm_api3('Contribution', 'getactions', array());
+  if (in_array('repeattransaction', $actions['values'])) {
+    civicrm_api3('contribution', 'repeattransaction', array(
+      'trxn_id' => $contribution->trxn_id,
+      'contribution_status_id' => $status_id,
+      'original_contribution_id' => civicrm_api3('contribution', 'getvalue', array(
+        'return' => 'id',
+        'contribution_recur_id' => $contribution->contribution_recur_id,
+        'options' => array('limit' => 1, 'sort' => 'id ASC'),
+      )),
+    ));
+  }
+  else {
+    // Legacy - expect messed up line items. CRM-15996.
+    $contribution->save();
+    complete_contribution($contribution);
+  }
+  return $contribution;
+}
+
+/**
+ * Marks a contribution as failed.
+ *
+ * @param CRM_Contribute_BAO_Contribution $failed
  *   The contribution to mark as failed
  *
  * @return CRM_Contribute_BAO_Contribution
  *   The contribution object.
  */
-function fail_contribution($contribution) {
+function fail_contribution($failed) {
   $contributionStatus = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
 
-  $failed = new CRM_Contribute_BAO_Contribution();
-  $failed->id = $contribution->id;
-  $failed->find(TRUE);
   $failed->contribution_status_id = array_search('Failed', $contributionStatus);
   $failed->receive_date = CRM_Utils_Date::isoToMysql(date('Y-m-d H:i:s'));
   $failed->save();
