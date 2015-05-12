@@ -74,7 +74,7 @@ function _civicrm_api3_job_eway_process_contribution($eway_token_clients, $insta
 
   // Process the payment.
   $apiResult[] = "Processing payment for " . $instance['type'] . " contribution ID: " . $instance['contribution']->id;
-  $amount_in_cents = str_replace('.', '', $instance['contribution']->total_amount);
+  $amount_in_cents = str_replace('.', '', $instance['contribution_recur']->amount);
   $managed_customer_id = $instance['contribution_recur']->processor_id;
 
   try {
@@ -91,7 +91,7 @@ function _civicrm_api3_job_eway_process_contribution($eway_token_clients, $insta
     $apiResult[] = "Marking contribution as complete";
     $instance['contribution']->trxn_id = $result['values'][$managed_customer_id]['trxn_id'];
     if (empty($instance['contribution']->id)) {
-      repeat_contribution($instance['contribution'], 'Completed');
+      repeat_contribution($instance['contribution'], 'Completed', $amount_in_cents);
     }
     else {
       complete_contribution($instance['contribution']);
@@ -354,17 +354,19 @@ function complete_contribution($contribution) {
  *
  * @param $status_id
  *
- * @return \CRM_Contribute_BAO_Contribution
- *   The contribution object.
+ * @param float $amount_in_cents
  *
+ * @return \CRM_Contribute_BAO_Contribution The contribution object.
+ * The contribution object.
  * @throws \CiviCRM_API3_Exception
  */
-function repeat_contribution($contribution, $status_id) {
+function repeat_contribution($contribution, $status_id, $amount_in_cents) {
   $actions = civicrm_api3('Contribution', 'getactions', array());
   if (in_array('repeattransaction', $actions['values'])) {
     civicrm_api3('contribution', 'repeattransaction', array(
       'trxn_id' => $contribution->trxn_id,
       'contribution_status_id' => $status_id,
+      'total_amount' => $amount_in_cents / 100,
       'original_contribution_id' => civicrm_api3('contribution', 'getvalue', array(
         'return' => 'id',
         'contribution_recur_id' => $contribution->contribution_recur_id,
