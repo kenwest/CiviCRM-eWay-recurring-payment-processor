@@ -377,6 +377,13 @@ function repeat_contribution($contribution, $status_id) {
     $contribution->save();
     complete_contribution($contribution);
   }
+  $result = civicrm_api3('contribution', 'getvalue', array(
+    'return' => 'id',
+    'contribution_recur_id' => $contribution->contribution_recur_id,
+    'options' => array('limit' => 1, 'sort' => 'id DESC'),
+  ));
+  $contribution->id = $result;
+  CRM_Utils_Hook::post('create', 'Contribution', $contribution->id, $contribution);
   return $contribution;
 }
 
