@@ -135,12 +135,15 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
           ), $extra));
 
 
-         /* civicrm_api3('contribution', 'completetransaction', array(
+          civicrm_api3('contribution', 'setvalue', array(
             'id' => $params['contributionID'],
-            'trxn_id' => $params['trxn_id'],
-            'is_email_receipt' => empty($params['contributionPageID']) ? FALSE : TRUE,
+            'field' => 'trxn_id',
+            'value' => $params['trxn_id'],
           ));
-         */
+
+          if (!empty($params['contributionPageID'])) {
+            civicrm_api3('contribution', 'sendconfirmation', array('id' => $params['contributionID']));
+          }
 
           // Send recurring Notification email for user.
           $recur = new CRM_Contribute_BAO_ContributionRecur();
