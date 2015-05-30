@@ -142,11 +142,12 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
 
           if (!empty($params['contributionPageID'])) {
             civicrm_api3('contribution', 'sendconfirmation', array('id' => $params['contributionID']));
-            civicrm_api3('contribution', 'setvalue', array(
+            /* civicrm_api3('contribution', 'setvalue', array(
               'id' => $params['contributionID'],
               'field' => 'receipt_date',
               'value' => CRM_Utils_Date::isoToMysql(date('Y-m-d H:i:s')),
             ));
+            */
           }
 
           // Send recurring Notification email for user.
