@@ -154,7 +154,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
           CRM_Contribute_BAO_ContributionPage::recurringNotify(
             CRM_Core_Payment::RECURRING_PAYMENT_START,
             $params['contactID'],
-            $params['contributionPageID'],
+            CRM_Utils_Array::value('contributionPageID', $params),
             $recur,
             $autoRenewMembership
           );
