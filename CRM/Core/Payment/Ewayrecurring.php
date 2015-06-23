@@ -148,7 +148,9 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
           $recur->find(TRUE);
           // If none found then effectively FALSE.
           $autoRenewMembership = civicrm_api3('membership', 'getcount', array('contribution_recur_id' => $recur->id));
-          if (!empty($params['selectMembership']) && !empty($params['auto_renew'])) {
+          if ((!empty($params['selectMembership']) || !empty($params['membership_type_id'])
+            && !empty($params['auto_renew']))
+          ) {
             $autoRenewMembership = TRUE;
           }
 
