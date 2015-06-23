@@ -25,4 +25,30 @@ Extension APIs - use api getfields function to find out more about these
   Scheduled Job Token
     job.eway
 
-This extension has quite a history, this documentation will be fleshed out in the future, but it wouldn't have been possible without the efforts and backing of : Voiceless (Sponsor), Community Builders, The Australasian Tuberous Sclerosis Society (Sponsor), Henare Degan, RIGPA (Sponsor), Ken West and Eileen McNaughton.
+
+-- Setting up an account for tokens ---
+
+To use tokens you need to set up an  API Password.
+
+
+1. Login to MYeWAY and navigate to My Account > User Security > Manage Roles
+
+2. Create role under name of Token API
+
+3. Navigate to My Account > User Security > Create User
+
+4. Assign Token role to new user.
+
+5. Name new user 'API KEY' and put in an email address.
+
+Eway recommend something along the lines of api@yourdomain.com.
+Then create a Password.
+Please note: The email address you use does not have to be real, as we will never send anything to it, but it does have to be unique.
+The password you create for this user will be your API Password and will be what you enter into the code.
+
+You should enter this password into your payment processor settings along with the email address you created for it.
+
+This extension wouldn't have been possible without the efforts and backing of : Voiceless (Sponsor), Chris Chinchilla, 
+Community Builders, The Australasian Tuberous Sclerosis Society (Sponsor), Henare Degan, RIGPA (Sponsor), 
+Ken West and Eileen McNaughton.
+
