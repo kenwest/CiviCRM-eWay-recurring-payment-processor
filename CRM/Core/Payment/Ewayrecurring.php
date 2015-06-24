@@ -106,66 +106,57 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
 
       // We've created the customer successfully.
       $managed_customer_id = $result;
-      if ($this->supportsImmediateRecurringPayment()) {
-        try {
-          $initialPayment = civicrm_api3('ewayrecurring', 'payment', array(
-            'invoice_id' => $params['invoiceID'],
-            'amount_in_cents' => round(((float) $params['amount']) * 100),
-            'managed_customer_id' => $managed_customer_id,
-            'description' => $params['description'] . ts('first payment'),
-            'payment_processor_id' => $this->_paymentProcessor['id'],
-          ));
 
-          // Here we compensate for the fact core accepts 0 as a valid frequency
-          // interval and set it.
-          $extra = array();
-          if (empty($params['frequency_interval'])) {
-            $params['frequency_interval'] = 1;
-            $extra['frequency_interval'] = 1;
-          }
-          $params['trxn_id'] = $initialPayment['values'][$managed_customer_id]['trxn_id'];
-          $params['contribution_status_id'] = 1;
-          // Save the eWay customer token in the recurring contribution's processor_id field.
-          civicrm_api3('contribution_recur', 'create', array_merge(array(
-            'id' => $params['contributionRecurID'],
-            'processor_id' => $managed_customer_id,
-            'contribution_status_id' => CRM_Core_OptionGroup::getValue('contribution_status', 'In Progress', 'name'),
-            'next_sched_contribution_date' => CRM_Utils_Date::isoToMysql(
-              date('Y-m-d 00:00:00', strtotime('+' . $params['frequency_interval'] . ' ' . $params['frequency_unit']))),
-          ), $extra));
+      try {
+        $initialPayment = civicrm_api3('ewayrecurring', 'payment', array(
+          'invoice_id' => $params['invoiceID'],
+          'amount_in_cents' => round(((float) $params['amount']) * 100),
+          'managed_customer_id' => $managed_customer_id,
+          'description' => $params['description'] . ts('first payment'),
+          'payment_processor_id' => $this->_paymentProcessor['id'],
+        ));
 
-
-         /* civicrm_api3('contribution', 'completetransaction', array(
-            'id' => $params['contributionID'],
-            'trxn_id' => $params['trxn_id'],
-            'is_email_receipt' => empty($params['contributionPageID']) ? FALSE : TRUE,
-          ));
-         */
-
-          // Send recurring Notification email for user.
-          $recur = new CRM_Contribute_BAO_ContributionRecur();
-          $recur->id = $params['contributionRecurID'];
-          $recur->find(TRUE);
-          // If none found then effectively FALSE.
-          $autoRenewMembership = civicrm_api3('membership', 'getcount', array('contribution_recur_id' => $recur->id));
-          if (!empty($params['selectMembership']) && !empty($params['auto_renew'])) {
-            $autoRenewMembership = TRUE;
-          }
-
-          CRM_Contribute_BAO_ContributionPage::recurringNotify(
-            CRM_Core_Payment::RECURRING_PAYMENT_START,
-            $params['contactID'],
-            CRM_Utils_Array::value('contributionPageID', $params),
-            $recur,
-            $autoRenewMembership
-          );
+        // Here we compensate for the fact core accepts 0 as a valid frequency
+        // interval and set it.
+        $extra = array();
+        if (empty($params['frequency_interval'])) {
+          $params['frequency_interval'] = 1;
+          $extra['frequency_interval'] = 1;
         }
-        catch (CiviCRM_API3_Exception $e) {
-          return self::errorExit(9014, 'Initial payment not processed' . $e->getMessage());
+        $params['trxn_id'] = $initialPayment['values'][$managed_customer_id]['trxn_id'];
+        $params['contribution_status_id'] = 1;
+        $params['payment_status_id'] = 1;
+        // Save the eWay customer token in the recurring contribution's processor_id field.
+        civicrm_api3('contribution_recur', 'create', array_merge(array(
+          'id' => $params['contributionRecurID'],
+          'processor_id' => $managed_customer_id,
+          'contribution_status_id' => CRM_Core_OptionGroup::getValue('contribution_status', 'In Progress', 'name'),
+          'next_sched_contribution_date' => CRM_Utils_Date::isoToMysql(
+            date('Y-m-d 00:00:00', strtotime('+' . $params['frequency_interval'] . ' ' . $params['frequency_unit']))),
+        ), $extra));
+
+        // Send recurring Notification email for user.
+        $recur = new CRM_Contribute_BAO_ContributionRecur();
+        $recur->id = $params['contributionRecurID'];
+        $recur->find(TRUE);
+        // If none found then effectively FALSE.
+        $autoRenewMembership = civicrm_api3('membership', 'getcount', array('contribution_recur_id' => $recur->id));
+        if ((!empty($params['selectMembership']) || !empty($params['membership_type_id'])
+          && !empty($params['auto_renew']))
+        ) {
+          $autoRenewMembership = TRUE;
         }
+
+        CRM_Contribute_BAO_ContributionPage::recurringNotify(
+          CRM_Core_Payment::RECURRING_PAYMENT_START,
+          $params['contactID'],
+          CRM_Utils_Array::value('contributionPageID', $params),
+          $recur,
+          $autoRenewMembership
+        );
       }
-      else {
-        // This payment will staying in a pending state until it's processed by the scheduled job.
+      catch (CiviCRM_API3_Exception $e) {
+        return self::errorExit(9014, 'Initial payment not processed' . $e->getMessage());
       }
 
     }
@@ -804,6 +795,7 @@ The CiviCRM eWAY Payment Processor Module
       'gross_amount' => $eWAYResponse->Amount(),
       'trxn_id' => $eWAYResponse->TransactionNumber(),
       'trxn_result_code' => $status,
+      'payment_status_id' => 1,
     );
     return $result;
   }
