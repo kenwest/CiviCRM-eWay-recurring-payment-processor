@@ -76,6 +76,7 @@ function _civicrm_api3_job_eway_process_contribution($eway_token_clients, $insta
   $apiResult[] = "Processing payment for " . $instance['type'] . " contribution ID: " . $instance['contribution']->id;
   $amount_in_cents = str_replace('.', '', $instance['contribution_recur']->amount);
   $managed_customer_id = $instance['contribution_recur']->processor_id;
+  $instance['contribution_recur']->contribution_status_id = _eway_recurring_get_contribution_status_id('In Progress');
 
   try {
     $result = civicrm_api3('ewayrecurring', 'payment', array(
@@ -103,8 +104,11 @@ function _civicrm_api3_job_eway_process_contribution($eway_token_clients, $insta
     $apiResult[] = 'eWAY managed customer: ' . $instance['contribution_recur']->processor_id;
     $apiResult[] = 'eWAY response: ' . $result['faultstring'];
     $apiResult[] = "Marking contribution as failed";
-    fail_contribution($instance['contribution']);
     $instance['contribution_recur']->failure_count += 1;
+    if (_eway_recurring_is_recurring_expired($instance['contribution_recur']->id)) {
+      $instance['contribution_recur']->contribution_status_id = _eway_recurring_get_contribution_status_id('Cancelled');
+      $instance['contribution_recur']->cancel_date = CRM_Utils_Date::isoToMysql(date('Y-m-d H:i:s'));
+    }
   }
 
   // Update the recurring transaction
@@ -385,20 +389,53 @@ function repeat_contribution($contribution, $status_id, $amount_in_cents) {
 /**
  * Marks a contribution as failed.
  *
- * @param CRM_Contribute_BAO_Contribution $failed
+ * @param CRM_Contribute_BAO_Contribution $failedContribution
  *   The contribution to mark as failed
  *
  * @return CRM_Contribute_BAO_Contribution
  *   The contribution object.
  */
-function fail_contribution($failed) {
+function fail_contribution($failedContribution) {
   $contributionStatus = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
 
-  $failed->contribution_status_id = array_search('Failed', $contributionStatus);
-  $failed->receive_date = CRM_Utils_Date::isoToMysql(date('Y-m-d H:i:s'));
-  $failed->save();
+  $failedContribution->contribution_status_id = array_search('Failed', $contributionStatus);
+  $failedContribution->receive_date = CRM_Utils_Date::isoToMysql(date('Y-m-d H:i:s'));
+  $failedContribution->save();
+  return $failedContribution;
+}
 
-  return $failed;
+/**
+ * Check to see if failed contribution is expired.
+ *
+ * @param int $recurringContributionID
+ *
+ * @return bool
+ *
+ * @throws \CiviCRM_API3_Exception
+ */
+function _eway_recurring_is_recurring_expired($recurringContributionID) {
+  $tokenStatus = civicrm_api3('Ewayrecurring', 'Tokenquery', array(
+    'contribution_recur_id' => $recurringContributionID,
+    'sequential' => 1,
+  ));
+
+  if (isset($tokenStatus['values'][0]['expiry_date']) && strtotime($tokenStatus['values'][0]['expiry_date']) < strtotime('now')) {
+    return TRUE;
+  }
+  return FALSE;
+
+}
+
+/**
+ * Get the relevant status id.
+ *
+ * @param string $statusName
+ *
+ * @return int
+ */
+function _eway_recurring_get_contribution_status_id($statusName) {
+  $statuses = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
+  return array_search($statusName, $statuses);
 }
 
 /**
@@ -411,14 +448,11 @@ function fail_contribution($failed) {
  *   The recurring contribution object.
  */
 function update_recurring_contribution($current_recur) {
-  $contributionStatus = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
-
   /*
    * Creating a new recurrence object as the DAO had problems saving unless all the dates were overwritten. Seems easier to create a new object and only update the fields that are needed @todo - switching to using the api would solve the DAO dates problem & api accepts 'In Progress' so no need to resolve it first.
    */
-  $updated_recur = new CRM_Contribute_BAO_ContributionRecur();
+  $updated_recur = $current_recur;
   $updated_recur->id = $current_recur->id;
-  $updated_recur->contribution_status_id = array_search('In Progress', $contributionStatus);
   $updated_recur->modified_date = CRM_Utils_Date::isoToMysql(date('Y-m-d H:i:s'));
   $updated_recur->failure_count = $current_recur->failure_count;
 
@@ -442,7 +476,7 @@ function update_recurring_contribution($current_recur) {
       else {
         $updated_recur->next_sched_contribution = NULL;
       }
-      $updated_recur->contribution_status_id = array_search('Completed', $contributionStatus);
+      $updated_recur->contribution_status_id = _eway_recurring_get_contribution_status_id('Completed');
       $updated_recur->end_date = CRM_Utils_Date::isoToMysql(date('Y-m-d 00:00:00'));
     }
   }

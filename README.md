@@ -47,6 +47,7 @@ Please note: The email address you use does not have to be real, as we will neve
 The password you create for this user will be your API Password and will be what you enter into the code.
 
 You should enter this password into your payment processor settings along with the email address you created for it.
+The 'subject' field is the customer number.
 
 This extension wouldn't have been possible without the efforts and backing of : Voiceless (Sponsor), Chris Chinchilla, 
 Community Builders, The Australasian Tuberous Sclerosis Society (Sponsor), Henare Degan, RIGPA (Sponsor), 

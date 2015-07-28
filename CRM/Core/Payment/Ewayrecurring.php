@@ -181,12 +181,18 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
    *
    * @param int $invoiceId The ID to check.
    *
-   * @return bool
-   *   True if ID exists, else false
+   * @param null $contributionID
+   *   If a contribution exists pass in the contribution ID.
+   *
+   * @return bool True if ID exists, else false
+   * True if ID exists, else false
    */
-  public function checkDupe($invoiceId) {
+  protected function checkDupe($invoiceId, $contributionID = NULL) {
     $contribution = new CRM_Contribute_DAO_Contribution();
     $contribution->invoice_id = $invoiceId;
+    if ($contributionID) {
+      $contribution->whereAdd("id <> $contributionID");
+    }
     return $contribution->find();
   }
 
@@ -719,8 +725,8 @@ The CiviCRM eWAY Payment Processor Module
     CRM_Utils_Hook::alterPaymentProcessorParams($this, $params, $eWAYRequest);
 
     // Check for a duplicate after the hook has been called.
-    if ($this->checkDupe($params['invoiceID'])) {
-      throw new CRM_Core_Exception('It appears that this transaction is a duplicate.  Have you already submitted the form once?  If so there may have been a connection problem.  Check your email for a receipt from eWAY.  If you do not receive a receipt within 2 hours you can try your transaction again.  If you continue to have problems please contact the site administrator.');
+    if ($this->checkDupe($params['invoiceID'], CRM_Utils_Array::value('contributionID', $params))) {
+      throw new CRM_Core_Exception('It appears that this transaction is a duplicate.  Have you already submitted the form once?  If so there may have been a connection problem.  Check your email for a receipts.  If you do not receive a receipt within 2 hours you can try your transaction again.  If you continue to have problems please contact the site administrator.');
     }
     return $eWAYRequest;
   }
