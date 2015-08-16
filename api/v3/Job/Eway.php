@@ -51,7 +51,7 @@ function civicrm_api3_job_eway($params) {
   }
 
   // Process today's scheduled contributions and process them
-  $scheduled_contributions = get_scheduled_contributions($eway_token_clients);
+  $scheduled_contributions = get_scheduled_contributions($eway_token_clients, $params);
 
   $apiResult[] = "Processing " . count($scheduled_contributions) . " scheduled contributions";
   foreach ($scheduled_contributions as $scheduled_contribution) {
@@ -128,12 +128,14 @@ function _civicrm_api3_job_eway_spec(&$params) {
   $params['domain_id']['api.default'] = CRM_Core_Config::domainID();
   $params['domain_id']['type'] = CRM_Utils_Type::T_INT;
   $params['domain_id']['title'] = ts('Domain');
+  $params['contribution_recur_id']['title'] = ts('Recurring Contribution ID (optional to only process one entity)');
+  $params['contribution_recur_id']['type'] = CRM_Utils_Type::T_INT;
 }
 
 /**
  * Get the eWAY recurring payment processors as an array of client objects.
  *
- * @param $domainID
+ * @param int $domainID
  *
  * @throws CiviCRM_API3_Exception
  *
@@ -226,12 +228,13 @@ function get_pending_recurring_contributions($eway_token_clients) {
 /**
  * Gets recurring contributions that are scheduled to be processed today.
  *
- * @param $eway_token_clients
+ * @param array $eway_token_clients
+ * @param array $params
  *
  * @return array
  *   An array of contribution_recur objects.
  */
-function get_scheduled_contributions($eway_token_clients) {
+function get_scheduled_contributions($eway_token_clients, $params) {
   if (empty($eway_token_clients)) {
     return array();
   }
@@ -245,6 +248,9 @@ function get_scheduled_contributions($eway_token_clients) {
   }
   else {
     $scheduled_today->whereAdd("`next_sched_contribution` <= '" . date('Y-m-d 00:00:00') . "'");
+  }
+  if (!empty($params['contribution_recur_id'])) {
+    $scheduled_today->id = $params['contribution_recur_id'];
   }
   $scheduled_today->whereAdd("`contribution_status_id` = " . array_search('In Progress', $contributionStatus));
   $scheduled_today->whereAdd("`payment_processor_id` in (" . implode(', ', array_keys($eway_token_clients)) . ")");
