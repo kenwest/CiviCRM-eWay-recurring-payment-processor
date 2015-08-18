@@ -362,12 +362,12 @@ function complete_contribution($contribution) {
  * @param CRM_Contribute_BAO_Contribution $contribution
  *  The contribution to mark as complete
  *
- * @param $status_id
+ * @param int $status_id
  *
  * @param float $amount_in_cents
  *
- * @return \CRM_Contribute_BAO_Contribution The contribution object.
- * The contribution object.
+ * @return \CRM_Contribute_BAO_Contribution.
+ *   The contribution object.
  * @throws \CiviCRM_API3_Exception
  */
 function repeat_contribution($contribution, $status_id, $amount_in_cents) {

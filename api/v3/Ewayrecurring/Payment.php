@@ -15,10 +15,10 @@ function civicrm_api3_ewayrecurring_payment($params) {
   // If the site is in developer mode we return a mock success.
   if (civicrm_api3('setting', 'getvalue', array(
     'group' => 'eway',
-    'name' => 'eway_developer_mode'
+    'name' => 'eway_developer_mode',
   ))) {
     return civicrm_api3_create_success(array(
-      $params['managed_customer_id'] => array('trxn_id' => uniqid())
+      $params['managed_customer_id'] => array('trxn_id' => uniqid()),
     ), $params);
   }
 
