@@ -1,5 +1,3 @@
-This is very much BETA right now, go ahead and use it, but I make no guarantees about anything.
-However, you will be helping me test things :)
 
 This branch supports CiviCRM versions 4.4+ For a period there were parallel developments and those
 have been merged into this branch - making it quite different from the other branches. They are no longer
