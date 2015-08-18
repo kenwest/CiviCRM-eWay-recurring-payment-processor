@@ -47,7 +47,7 @@ function civicrm_api3_job_eway($params) {
 
   $apiResult[] = "Processing " . count($pending_contributions) . " pending contributions";
   foreach ($pending_contributions as $pending_contribution) {
-    $apiResult = array_merge($apiResult, _civicrm_api3_job_eway_process_contribution($eway_token_clients, $pending_contribution));
+    $apiResult = array_merge($apiResult, _civicrm_api3_job_eway_process_contribution($pending_contribution));
   }
 
   // Process today's scheduled contributions and process them
@@ -55,7 +55,7 @@ function civicrm_api3_job_eway($params) {
 
   $apiResult[] = "Processing " . count($scheduled_contributions) . " scheduled contributions";
   foreach ($scheduled_contributions as $scheduled_contribution) {
-    $apiResult = array_merge($apiResult, _civicrm_api3_job_eway_process_contribution($eway_token_clients, $scheduled_contribution));
+    $apiResult = array_merge($apiResult, _civicrm_api3_job_eway_process_contribution($scheduled_contribution));
   }
 
   return civicrm_api3_create_success($apiResult, $params);
@@ -64,12 +64,11 @@ function civicrm_api3_job_eway($params) {
 /**
  * Process a contribution.
  *
- * @param array $eway_token_clients
  * @param array $instance
  *
  * @return array
  */
-function _civicrm_api3_job_eway_process_contribution($eway_token_clients, $instance) {
+function _civicrm_api3_job_eway_process_contribution($instance) {
   $apiResult = array();
 
   // Process the payment.
