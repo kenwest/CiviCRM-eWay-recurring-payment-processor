@@ -419,10 +419,16 @@ function fail_contribution($failedContribution) {
  * @throws \CiviCRM_API3_Exception
  */
 function _eway_recurring_is_recurring_expired($recurringContributionID) {
-  $tokenStatus = civicrm_api3('Ewayrecurring', 'Tokenquery', array(
-    'contribution_recur_id' => $recurringContributionID,
-    'sequential' => 1,
-  ));
+  try {
+    $tokenStatus = civicrm_api3('Ewayrecurring', 'Tokenquery', array(
+      'contribution_recur_id' => $recurringContributionID,
+      'sequential' => 1,
+    ));
+  }
+  catch (CiviCRM_API3_Exception $e) {
+    // This means it is not valid - is there something else we should do?
+    return FALSE;
+  }
 
   if (isset($tokenStatus['values'][0]['expiry_date']) && strtotime($tokenStatus['values'][0]['expiry_date']) < strtotime('now')) {
     return TRUE;
