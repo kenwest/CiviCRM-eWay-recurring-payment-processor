@@ -277,8 +277,14 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
     }
 
     // TODO: Check that recurring config values have been set
-
     if (!empty($errorMsg)) {
+      if (civicrm_api3('setting', 'getvalue', array(
+        'group' => 'eway',
+        'name' => 'eway_developer_mode'
+      ))) {
+        CRM_Core_Session::setStatus(ts('Site is in developer mode so these errors are being ignored: ' . implode(', ', $errorMsg)));
+        return NULL;
+      }
       return implode('<p>', $errorMsg);
     }
     else {
