@@ -126,11 +126,17 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
         $params['trxn_id'] = $initialPayment['values'][$managed_customer_id]['trxn_id'];
         $params['contribution_status_id'] = 1;
         $params['payment_status_id'] = 1;
+        // If there's only one installment, then the recurring contribution is now complete
+        if (isset($params['installments']) && $params['installments'] == 1) {
+          $status = CRM_Core_OptionGroup::getValue('contribution_status', 'Completed', 'name');
+        } else {
+          $status = CRM_Core_OptionGroup::getValue('contribution_status', 'In Progress', 'name');
+        }
         // Save the eWay customer token in the recurring contribution's processor_id field.
         civicrm_api3('contribution_recur', 'create', array_merge(array(
           'id' => $params['contributionRecurID'],
           'processor_id' => $managed_customer_id,
-          'contribution_status_id' => CRM_Core_OptionGroup::getValue('contribution_status', 'In Progress', 'name'),
+          'contribution_status_id' => $status,
           'next_sched_contribution_date' => CRM_Utils_Date::isoToMysql(
             date('Y-m-d 00:00:00', strtotime('+' . $params['frequency_interval'] . ' ' . $params['frequency_unit']))),
         ), $extra));

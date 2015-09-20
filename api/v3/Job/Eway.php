@@ -47,15 +47,15 @@ function civicrm_api3_job_eway($params) {
 
   $apiResult[] = "Processing " . count($pending_contributions) . " pending contributions";
   foreach ($pending_contributions as $pending_contribution) {
-    $apiResult = array_merge($apiResult, _civicrm_api3_job_eway_process_contribution($eway_token_clients, $pending_contribution));
+    $apiResult = array_merge($apiResult, _civicrm_api3_job_eway_process_contribution($pending_contribution));
   }
 
   // Process today's scheduled contributions and process them
-  $scheduled_contributions = get_scheduled_contributions($eway_token_clients);
+  $scheduled_contributions = get_scheduled_contributions($eway_token_clients, $params);
 
   $apiResult[] = "Processing " . count($scheduled_contributions) . " scheduled contributions";
   foreach ($scheduled_contributions as $scheduled_contribution) {
-    $apiResult = array_merge($apiResult, _civicrm_api3_job_eway_process_contribution($eway_token_clients, $scheduled_contribution));
+    $apiResult = array_merge($apiResult, _civicrm_api3_job_eway_process_contribution($scheduled_contribution));
   }
 
   return civicrm_api3_create_success($apiResult, $params);
@@ -64,12 +64,11 @@ function civicrm_api3_job_eway($params) {
 /**
  * Process a contribution.
  *
- * @param array $eway_token_clients
  * @param array $instance
  *
  * @return array
  */
-function _civicrm_api3_job_eway_process_contribution($eway_token_clients, $instance) {
+function _civicrm_api3_job_eway_process_contribution($instance) {
   $apiResult = array();
 
   // Process the payment.
@@ -128,12 +127,14 @@ function _civicrm_api3_job_eway_spec(&$params) {
   $params['domain_id']['api.default'] = CRM_Core_Config::domainID();
   $params['domain_id']['type'] = CRM_Utils_Type::T_INT;
   $params['domain_id']['title'] = ts('Domain');
+  $params['contribution_recur_id']['title'] = ts('Recurring Contribution ID (optional to only process one entity)');
+  $params['contribution_recur_id']['type'] = CRM_Utils_Type::T_INT;
 }
 
 /**
  * Get the eWAY recurring payment processors as an array of client objects.
  *
- * @param $domainID
+ * @param int $domainID
  *
  * @throws CiviCRM_API3_Exception
  *
@@ -226,12 +227,13 @@ function get_pending_recurring_contributions($eway_token_clients) {
 /**
  * Gets recurring contributions that are scheduled to be processed today.
  *
- * @param $eway_token_clients
+ * @param array $eway_token_clients
+ * @param array $params
  *
  * @return array
  *   An array of contribution_recur objects.
  */
-function get_scheduled_contributions($eway_token_clients) {
+function get_scheduled_contributions($eway_token_clients, $params) {
   if (empty($eway_token_clients)) {
     return array();
   }
@@ -245,6 +247,9 @@ function get_scheduled_contributions($eway_token_clients) {
   }
   else {
     $scheduled_today->whereAdd("`next_sched_contribution` <= '" . date('Y-m-d 00:00:00') . "'");
+  }
+  if (!empty($params['contribution_recur_id'])) {
+    $scheduled_today->id = $params['contribution_recur_id'];
   }
   $scheduled_today->whereAdd("`contribution_status_id` = " . array_search('In Progress', $contributionStatus));
   $scheduled_today->whereAdd("`payment_processor_id` in (" . implode(', ', array_keys($eway_token_clients)) . ")");
@@ -356,12 +361,12 @@ function complete_contribution($contribution) {
  * @param CRM_Contribute_BAO_Contribution $contribution
  *  The contribution to mark as complete
  *
- * @param $status_id
+ * @param int $status_id
  *
  * @param float $amount_in_cents
  *
- * @return \CRM_Contribute_BAO_Contribution The contribution object.
- * The contribution object.
+ * @return \CRM_Contribute_BAO_Contribution.
+ *   The contribution object.
  * @throws \CiviCRM_API3_Exception
  */
 function repeat_contribution($contribution, $status_id, $amount_in_cents) {
@@ -414,10 +419,16 @@ function fail_contribution($failedContribution) {
  * @throws \CiviCRM_API3_Exception
  */
 function _eway_recurring_is_recurring_expired($recurringContributionID) {
-  $tokenStatus = civicrm_api3('Ewayrecurring', 'Tokenquery', array(
-    'contribution_recur_id' => $recurringContributionID,
-    'sequential' => 1,
-  ));
+  try {
+    $tokenStatus = civicrm_api3('Ewayrecurring', 'Tokenquery', array(
+      'contribution_recur_id' => $recurringContributionID,
+      'sequential' => 1,
+    ));
+  }
+  catch (CiviCRM_API3_Exception $e) {
+    // This means it is not valid - is there something else we should do?
+    return FALSE;
+  }
 
   if (isset($tokenStatus['values'][0]['expiry_date']) && strtotime($tokenStatus['values'][0]['expiry_date']) < strtotime('now')) {
     return TRUE;
