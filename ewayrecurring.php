@@ -163,15 +163,10 @@ function ewayrecurring_civicrm_buildForm($formName, &$form) {
     return;
   }
 
-  $processorIDs = implode(',', array_keys($form->_processors));
-  $hasNonEway = CRM_Core_DAO::singleValueQuery("
-    SELECT count(*) FROM civicrm_payment_processor p
-    WHERE class_name NOT LIKE '%Eway%'
-    AND id IN ($processorIDs);
-  ");
-  if ($hasNonEway) {
+  if (!isEwayOnlyRelevantProcessor($form)) {
     return;
   }
+
   CRM_Core_Session::setStatus(ts('Eway is in test mode. Test credentials have been pre-filled. No live transaction will be submitted'));
   $defaults['credit_card_number'] = '4444333322221111';
   $defaults['credit_card_type'] = 'Visa';
@@ -182,4 +177,30 @@ function ewayrecurring_civicrm_buildForm($formName, &$form) {
   $form->setDefaults($defaults);
 
 
+}
+
+/**
+ * Is eway the only relevant processor on this form.
+ *
+ * If eWay is the default or the only possible type on this form we can fill in the
+ * default credit card values.
+ *
+ * @param CRM_Core_Form $form
+ *
+ * @return bool
+ */
+function isEwayOnlyRelevantProcessor(&$form) {
+  if (($processors = array_keys($form->_processors)) == FALSE) {
+    return FALSE;
+  }
+  $processors = civicrm_api3('PaymentProcessor', 'get', array('id' => array('IN' => $processors)));
+  if (isset($form->_paymentProcessor) && $processors['values'][$form->_paymentProcessor['id']]['class_name'] == 'Payment_Ewayrecurring') {
+    return TRUE;
+  }
+  foreach ($processors['values'] as $processorID => $processorSpec) {
+    if ($processorSpec['class_name'] != 'Payment_Ewayrecurring') {
+      return FALSE;
+    }
+  }
+  return TRUE;
 }
