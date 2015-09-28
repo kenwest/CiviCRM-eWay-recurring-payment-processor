@@ -19,12 +19,11 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
    */
   static private $_singleton = NULL;
 
-  /**********************************************************
-   * Constructor
+  /**
+   * Class Constructor.
    *
    * @param string $mode the mode of operation: live or test
-   *
-   * @param $paymentProcessor
+   * @param array $paymentProcessor
    *
    * @return \CRM_Core_Payment_Ewayrecurring
    */
