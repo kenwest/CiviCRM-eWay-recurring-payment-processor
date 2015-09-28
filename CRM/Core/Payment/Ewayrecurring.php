@@ -195,6 +195,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
   protected function checkDupe($invoiceId, $contributionID = NULL) {
     $contribution = new CRM_Contribute_DAO_Contribution();
     $contribution->invoice_id = $invoiceId;
+    $contribution->contribution_status_id = 1;
     if ($contributionID) {
       $contribution->whereAdd("id <> $contributionID");
     }
