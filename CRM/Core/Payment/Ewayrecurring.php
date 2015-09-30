@@ -128,7 +128,8 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
         // If there's only one installment, then the recurring contribution is now complete
         if (isset($params['installments']) && $params['installments'] == 1) {
           $status = CRM_Core_OptionGroup::getValue('contribution_status', 'Completed', 'name');
-        } else {
+        }
+        else {
           $status = CRM_Core_OptionGroup::getValue('contribution_status', 'In Progress', 'name');
         }
         // Save the eWay customer token in the recurring contribution's processor_id field.
