@@ -19,12 +19,11 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
    */
   static private $_singleton = NULL;
 
-  /**********************************************************
-   * Constructor
+  /**
+   * Class Constructor.
    *
    * @param string $mode the mode of operation: live or test
-   *
-   * @param $paymentProcessor
+   * @param array $paymentProcessor
    *
    * @return \CRM_Core_Payment_Ewayrecurring
    */
@@ -129,7 +128,8 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
         // If there's only one installment, then the recurring contribution is now complete
         if (isset($params['installments']) && $params['installments'] == 1) {
           $status = CRM_Core_OptionGroup::getValue('contribution_status', 'Completed', 'name');
-        } else {
+        }
+        else {
           $status = CRM_Core_OptionGroup::getValue('contribution_status', 'In Progress', 'name');
         }
         // Save the eWay customer token in the recurring contribution's processor_id field.
@@ -196,6 +196,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
   protected function checkDupe($invoiceId, $contributionID = NULL) {
     $contribution = new CRM_Contribute_DAO_Contribution();
     $contribution->invoice_id = $invoiceId;
+    $contribution->contribution_status_id = 1;
     if ($contributionID) {
       $contribution->whereAdd("id <> $contributionID");
     }
