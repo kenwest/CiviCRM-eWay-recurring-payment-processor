@@ -389,8 +389,8 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
     list($fromName, $fromEmail) = CRM_Core_BAO_Domain::getNameAndEmail();
     $from      = "$fromName <$fromEmail>";
 
-    $toName    = 'Support at eWAY';
-    $toEmail   = 'Support@eWAY.com.au';
+    $toName    = 'Technical support';
+    $toEmail   = 'technical@citybibleforum.org';
 
     $subject   = "ALERT: Unique Trxn Number Failure : eWAY Transaction # = [" . $p_eWAY_tran_num . "]";
 
