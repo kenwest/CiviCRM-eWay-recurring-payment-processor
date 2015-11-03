@@ -803,7 +803,7 @@ The CiviCRM eWAY Payment Processor Module
     // There is an error message commented out here but my preferred response to this unlikely
     // possibility is to email 'support@eWAY.com.au'
     //-----------------------------------------------------------------------------------------------------
-    $eWayTrxnReference_OUT = $params['invoiceID'];
+    $eWayTrxnReference_OUT = $eWAYRequest->GetTransactionNumber();
     $eWayTrxnReference_IN = $eWAYResponse->InvoiceReference();
 
     if ($eWayTrxnReference_IN != $eWayTrxnReference_OUT) {
