@@ -78,6 +78,8 @@ function _civicrm_api3_job_eway_process_contribution($eway_token_clients, $insta
   $managed_customer_id = $instance['contribution_recur']->processor_id;
 
   try {
+    $template = CRM_Core_Smarty::singleton();
+    $template->clearTemplateVars();
     $result = civicrm_api3('ewayrecurring', 'payment', array(
       'invoice_id' => $instance['contribution']->invoice_id,
       'amount_in_cents' => $amount_in_cents,
