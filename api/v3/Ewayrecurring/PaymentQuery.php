@@ -33,7 +33,7 @@ function civicrm_api3_ewayrecurring_payment_query($params) {
   }
   $result[$params['managed_customer_id']] = array_merge($ewayResult, array(
     'contact_id' => $recur['contact_id'],
-    'code' => $params['managed_customer_id'],
+    'token' => $params['managed_customer_id'],
     'reference' => $ewayResult['CCNumber'],
     'email' => $ewayResult['CustomerEmail'],
     'expiry_date' => date('Y-m-d', strtotime(

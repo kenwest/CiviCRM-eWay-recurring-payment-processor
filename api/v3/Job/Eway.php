@@ -47,15 +47,15 @@ function civicrm_api3_job_eway($params) {
 
   $apiResult[] = "Processing " . count($pending_contributions) . " pending contributions";
   foreach ($pending_contributions as $pending_contribution) {
-    $apiResult = array_merge($apiResult, _civicrm_api3_job_eway_process_contribution($eway_token_clients, $pending_contribution));
+    $apiResult = array_merge($apiResult, _civicrm_api3_job_eway_process_contribution($pending_contribution));
   }
 
   // Process today's scheduled contributions and process them
-  $scheduled_contributions = get_scheduled_contributions($eway_token_clients);
+  $scheduled_contributions = get_scheduled_contributions($eway_token_clients, $params);
 
   $apiResult[] = "Processing " . count($scheduled_contributions) . " scheduled contributions";
   foreach ($scheduled_contributions as $scheduled_contribution) {
-    $apiResult = array_merge($apiResult, _civicrm_api3_job_eway_process_contribution($eway_token_clients, $scheduled_contribution));
+    $apiResult = array_merge($apiResult, _civicrm_api3_job_eway_process_contribution($scheduled_contribution));
   }
 
   return civicrm_api3_create_success($apiResult, $params);
@@ -64,18 +64,18 @@ function civicrm_api3_job_eway($params) {
 /**
  * Process a contribution.
  *
- * @param array $eway_token_clients
  * @param array $instance
  *
  * @return array
  */
-function _civicrm_api3_job_eway_process_contribution($eway_token_clients, $instance) {
+function _civicrm_api3_job_eway_process_contribution($instance) {
   $apiResult = array();
 
   // Process the payment.
   $apiResult[] = "Processing payment for " . $instance['type'] . " contribution ID: " . $instance['contribution']->id;
   $amount_in_cents = str_replace('.', '', $instance['contribution_recur']->amount);
   $managed_customer_id = $instance['contribution_recur']->processor_id;
+  $instance['contribution_recur']->contribution_status_id = _eway_recurring_get_contribution_status_id('In Progress');
 
   try {
     $template = CRM_Core_Smarty::singleton();    // workaround for CRM-17519
@@ -105,8 +105,11 @@ function _civicrm_api3_job_eway_process_contribution($eway_token_clients, $insta
     $apiResult[] = 'eWAY managed customer: ' . $instance['contribution_recur']->processor_id;
     $apiResult[] = 'eWAY response: ' . $result['faultstring'];
     $apiResult[] = "Marking contribution as failed";
-    fail_contribution($instance['contribution']);
     $instance['contribution_recur']->failure_count += 1;
+    if (_eway_recurring_is_recurring_expired($instance['contribution_recur']->id)) {
+      $instance['contribution_recur']->contribution_status_id = _eway_recurring_get_contribution_status_id('Cancelled');
+      $instance['contribution_recur']->cancel_date = CRM_Utils_Date::isoToMysql(date('Y-m-d H:i:s'));
+    }
   }
 
   // Update the recurring transaction
@@ -126,12 +129,14 @@ function _civicrm_api3_job_eway_spec(&$params) {
   $params['domain_id']['api.default'] = CRM_Core_Config::domainID();
   $params['domain_id']['type'] = CRM_Utils_Type::T_INT;
   $params['domain_id']['title'] = ts('Domain');
+  $params['contribution_recur_id']['title'] = ts('Recurring Contribution ID (optional to only process one entity)');
+  $params['contribution_recur_id']['type'] = CRM_Utils_Type::T_INT;
 }
 
 /**
  * Get the eWAY recurring payment processors as an array of client objects.
  *
- * @param $domainID
+ * @param int $domainID
  *
  * @throws CiviCRM_API3_Exception
  *
@@ -224,12 +229,13 @@ function get_pending_recurring_contributions($eway_token_clients) {
 /**
  * Gets recurring contributions that are scheduled to be processed today.
  *
- * @param $eway_token_clients
+ * @param array $eway_token_clients
+ * @param array $params
  *
  * @return array
  *   An array of contribution_recur objects.
  */
-function get_scheduled_contributions($eway_token_clients) {
+function get_scheduled_contributions($eway_token_clients, $params) {
   if (empty($eway_token_clients)) {
     return array();
   }
@@ -243,6 +249,9 @@ function get_scheduled_contributions($eway_token_clients) {
   }
   else {
     $scheduled_today->whereAdd("`next_sched_contribution` <= '" . date('Y-m-d 00:00:00') . "'");
+  }
+  if (!empty($params['contribution_recur_id'])) {
+    $scheduled_today->id = $params['contribution_recur_id'];
   }
   $scheduled_today->whereAdd("`contribution_status_id` = " . array_search('In Progress', $contributionStatus));
   $scheduled_today->whereAdd("`payment_processor_id` in (" . implode(', ', array_keys($eway_token_clients)) . ")");
@@ -354,12 +363,12 @@ function complete_contribution($contribution) {
  * @param CRM_Contribute_BAO_Contribution $contribution
  *  The contribution to mark as complete
  *
- * @param $status_id
+ * @param int $status_id
  *
  * @param float $amount_in_cents
  *
- * @return \CRM_Contribute_BAO_Contribution The contribution object.
- * The contribution object.
+ * @return \CRM_Contribute_BAO_Contribution.
+ *   The contribution object.
  * @throws \CiviCRM_API3_Exception
  */
 function repeat_contribution($contribution, $status_id, $amount_in_cents) {
@@ -381,33 +390,65 @@ function repeat_contribution($contribution, $status_id, $amount_in_cents) {
     $contribution->save();
     complete_contribution($contribution);
   }
-  $result = civicrm_api3('contribution', 'getvalue', array(
-    'return' => 'id',
-    'contribution_recur_id' => $contribution->contribution_recur_id,
-    'options' => array('limit' => 1, 'sort' => 'id DESC'),
-  ));
-  $contribution->id = $result;
-  CRM_Utils_Hook::post('create', 'Contribution', $contribution->id, $contribution);
   return $contribution;
 }
 
 /**
  * Marks a contribution as failed.
  *
- * @param CRM_Contribute_BAO_Contribution $failed
+ * @param CRM_Contribute_BAO_Contribution $failedContribution
  *   The contribution to mark as failed
  *
  * @return CRM_Contribute_BAO_Contribution
  *   The contribution object.
  */
-function fail_contribution($failed) {
+function fail_contribution($failedContribution) {
   $contributionStatus = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
 
-  $failed->contribution_status_id = array_search('Failed', $contributionStatus);
-  $failed->receive_date = CRM_Utils_Date::isoToMysql(date('Y-m-d H:i:s'));
-  $failed->save();
+  $failedContribution->contribution_status_id = array_search('Failed', $contributionStatus);
+  $failedContribution->receive_date = CRM_Utils_Date::isoToMysql(date('Y-m-d H:i:s'));
+  $failedContribution->save();
+  return $failedContribution;
+}
 
-  return $failed;
+/**
+ * Check to see if failed contribution is expired.
+ *
+ * @param int $recurringContributionID
+ *
+ * @return bool
+ *
+ * @throws \CiviCRM_API3_Exception
+ */
+function _eway_recurring_is_recurring_expired($recurringContributionID) {
+  try {
+    $tokenStatus = civicrm_api3('Ewayrecurring', 'Tokenquery', array(
+      'contribution_recur_id' => $recurringContributionID,
+      'sequential' => 1,
+    ));
+  }
+  catch (CiviCRM_API3_Exception $e) {
+    // This means it is not valid - is there something else we should do?
+    return FALSE;
+  }
+
+  if (isset($tokenStatus['values'][0]['expiry_date']) && strtotime($tokenStatus['values'][0]['expiry_date']) < strtotime('now')) {
+    return TRUE;
+  }
+  return FALSE;
+
+}
+
+/**
+ * Get the relevant status id.
+ *
+ * @param string $statusName
+ *
+ * @return int
+ */
+function _eway_recurring_get_contribution_status_id($statusName) {
+  $statuses = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
+  return array_search($statusName, $statuses);
 }
 
 /**
@@ -420,14 +461,11 @@ function fail_contribution($failed) {
  *   The recurring contribution object.
  */
 function update_recurring_contribution($current_recur) {
-  $contributionStatus = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
-
   /*
    * Creating a new recurrence object as the DAO had problems saving unless all the dates were overwritten. Seems easier to create a new object and only update the fields that are needed @todo - switching to using the api would solve the DAO dates problem & api accepts 'In Progress' so no need to resolve it first.
    */
-  $updated_recur = new CRM_Contribute_BAO_ContributionRecur();
+  $updated_recur = $current_recur;
   $updated_recur->id = $current_recur->id;
-  $updated_recur->contribution_status_id = array_search('In Progress', $contributionStatus);
   $updated_recur->modified_date = CRM_Utils_Date::isoToMysql(date('Y-m-d H:i:s'));
   $updated_recur->failure_count = $current_recur->failure_count;
 
@@ -451,7 +489,7 @@ function update_recurring_contribution($current_recur) {
       else {
         $updated_recur->next_sched_contribution = NULL;
       }
-      $updated_recur->contribution_status_id = array_search('Completed', $contributionStatus);
+      $updated_recur->contribution_status_id = _eway_recurring_get_contribution_status_id('Completed');
       $updated_recur->end_date = CRM_Utils_Date::isoToMysql(date('Y-m-d 00:00:00'));
     }
   }
