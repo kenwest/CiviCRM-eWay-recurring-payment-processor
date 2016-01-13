@@ -78,8 +78,6 @@ function _civicrm_api3_job_eway_process_contribution($instance) {
   $instance['contribution_recur']->contribution_status_id = _eway_recurring_get_contribution_status_id('In Progress');
 
   try {
-    $template = CRM_Core_Smarty::singleton();    // workaround for CRM-17519
-    $template->clearTemplateVars();
     $result = civicrm_api3('ewayrecurring', 'payment', array(
       'invoice_id' => $instance['contribution']->invoice_id,
       'amount_in_cents' => $amount_in_cents,
