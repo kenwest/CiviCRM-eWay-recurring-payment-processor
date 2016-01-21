@@ -103,6 +103,9 @@ function _civicrm_api3_job_eway_process_contribution($instance) {
     $apiResult[] = 'eWAY managed customer: ' . $instance['contribution_recur']->processor_id;
     $apiResult[] = 'eWAY response: ' . $result['faultstring'];
     $apiResult[] = "Marking contribution as failed";
+    // I hate doing this save as it bypasses hooks but need a bigger review to do a better job.
+    $instance['contribution']->contribution_status_id = _eway_recurring_get_contribution_status_id('Failed');
+    $instance['contribution']->save();
     $instance['contribution_recur']->failure_count += 1;
     if (_eway_recurring_is_recurring_expired($instance['contribution_recur']->id)) {
       $instance['contribution_recur']->contribution_status_id = _eway_recurring_get_contribution_status_id('Cancelled');
