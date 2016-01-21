@@ -327,6 +327,19 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
   }
 
   /**
+   * Get an array of the fields that can be edited on the recurring contribution.
+   *
+   * Some payment processors support editing the amount and other scheduling details of recurring payments, especially
+   * those which use tokens. Others are fixed. This function allows the processor to return an array of the fields that
+   * can be updated from the contribution recur edit screen.
+   *
+   * @return array
+   */
+  public function getEditableRecurringScheduleFields() {
+    return array('amount', 'installments', 'next_sched_contribution_date');
+  }
+
+  /**
    * Get the subscription URL.
    *
    * @param int $entityID
