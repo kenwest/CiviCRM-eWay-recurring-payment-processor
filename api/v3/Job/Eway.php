@@ -72,7 +72,7 @@ function _civicrm_api3_job_eway_process_contribution($instance) {
   $apiResult = array();
 
   // Process the payment.
-  $apiResult[] = "Processing payment for " . $instance['type'] . " contribution ID: " . $instance['contribution']->id;
+  $apiResult[] = "Processing payment for " . $instance['type'] . " recurring contribution ID: " . $instance['contribution_recur']->id;
   $amount_in_cents = str_replace('.', '', $instance['contribution_recur']->amount);
   $managed_customer_id = $instance['contribution_recur']->processor_id;
   $instance['contribution_recur']->contribution_status_id = _eway_recurring_get_contribution_status_id('In Progress');
@@ -87,7 +87,7 @@ function _civicrm_api3_job_eway_process_contribution($instance) {
     ));
 
     // Process the contribution as either Completed or Failed.
-    $apiResult[] = "Successfully processed payment for " . $instance['type'] . " contribution ID: " . $instance['contribution']->id;
+    $apiResult[] = "Successfully processed payment for " . $instance['type'] . " recurring contribution ID: " . $instance['contribution_recur']->id;
     $apiResult[] = "Marking contribution as complete";
     $instance['contribution']->trxn_id = $result['values'][$managed_customer_id]['trxn_id'];
     if (empty($instance['contribution']->id)) {
@@ -99,7 +99,7 @@ function _civicrm_api3_job_eway_process_contribution($instance) {
     $instance['contribution_recur']->failure_count = 0;
   }
   catch (CiviCRM_API3_Exception $e) {
-    $apiResult[] = "ERROR: failed to process payment for " . $instance['type'] . " contribution ID: " . $instance['contribution']->id;
+    $apiResult[] = "ERROR: failed to process payment for " . $instance['type'] . " recurring contribution ID: " . $instance['contribution_recur']->id;
     $apiResult[] = 'eWAY managed customer: ' . $instance['contribution_recur']->processor_id;
     $apiResult[] = 'eWAY response: ' . $result['faultstring'];
     $apiResult[] = "Marking contribution as failed";
@@ -116,7 +116,7 @@ function _civicrm_api3_job_eway_process_contribution($instance) {
   // Update the recurring transaction
   $apiResult[] = "Updating recurring contribution";
   update_recurring_contribution($instance['contribution_recur']);
-  $apiResult[] = "Finished processing contribution ID: " . $instance['contribution']->id;
+  $apiResult[] = "Finished processing recurring contribution ID: " . $instance['contribution_recur']->id;
 
   return $apiResult;
 }
