@@ -1,5 +1,9 @@
 <?php
 
+// As this handles recurring and non-recurring, we also need to include original api libraries
+require_once 'packages/eWAY/eWAY_GatewayRequest.php';
+require_once 'packages/eWAY/eWAY_GatewayResponse.php';
+
 /**
  * Class CRM_Core_Payment_Ewayrecurring
  */
@@ -28,10 +32,6 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
    * @return \CRM_Core_Payment_Ewayrecurring
    */
   public function __construct($mode, &$paymentProcessor) {
-    // As this handles recurring and non-recurring, we also need to include original api libraries
-    require_once 'packages/eWAY/eWAY_GatewayRequest.php';
-    require_once 'packages/eWAY/eWAY_GatewayResponse.php';
-
     // Mod is live or test.
     $this->_mode = $mode;
     $this->_paymentProcessor = $paymentProcessor;
