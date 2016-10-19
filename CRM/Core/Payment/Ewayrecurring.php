@@ -132,9 +132,12 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
         else {
           $status = CRM_Core_OptionGroup::getValue('contribution_status', 'In Progress', 'name');
         }
+        $recurringContributionID = isset($params['contributionRecurID'])
+          ? $params['contributionRecurID']
+          : civicrm_api3('Contribution', 'getvalue', array('id' => $params['contributionID'], 'return' => 'contribution_recur_id'));
         // Save the eWay customer token in the recurring contribution's processor_id field.
         civicrm_api3('contribution_recur', 'create', array_merge(array(
-          'id' => $params['contributionRecurID'],
+          'id' => $recurringContributionID,
           'processor_id' => $managed_customer_id,
           'contribution_status_id' => $status,
           'next_sched_contribution_date' => CRM_Utils_Date::isoToMysql(
@@ -143,7 +146,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
 
         // Send recurring Notification email for user.
         $recur = new CRM_Contribute_BAO_ContributionRecur();
-        $recur->id = $params['contributionRecurID'];
+        $recur->id = $recurringContributionID;
         $recur->find(TRUE);
         // If none found then effectively FALSE.
         $autoRenewMembership = civicrm_api3('membership', 'getcount', array('contribution_recur_id' => $recur->id));
