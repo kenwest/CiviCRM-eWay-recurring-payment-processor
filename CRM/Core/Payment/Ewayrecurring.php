@@ -693,12 +693,26 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
 
     $eWAYRequest->CustomerIPAddress($params['ip_address']);
 
+    // Webform CiviCRM has $params['invoiceID'] as
+    // $params['invoice_id'].
+    //
+    // Check if this applies to all payment processors, if so put it
+    // in webform_civicrm_civicrm_alterPaymentProcessorParams()
+    // instead.
+    if (!isset($params['invoiceID']) && isset($params['invoice_id'])) {
+        $params['invoiceID'] = $params['invoice_id'];
+    }
+    
     // Allow further manipulation of the arguments via custom hooks ..
     CRM_Utils_Hook::alterPaymentProcessorParams($this, $params, $eWAYRequest);
 
-    // Check for a duplicate after the hook has been called.
-    if ($this->checkDupe($params['invoiceID'], CRM_Utils_Array::value('contributionID', $params))) {
-      throw new CRM_Core_Exception('It appears that this transaction is a duplicate.  Have you already submitted the form once?  If so there may have been a connection problem.  Check your email for a receipts.  If you do not receive a receipt within 2 hours you can try your transaction again.  If you continue to have problems please contact the site administrator.');
+    // We're checking $params['invoiceID'], and if we don't have it we
+    // can't check it at all.
+    if (isset($params['invoiceID'])) {
+        // Check for a duplicate after the hook has been called.
+        if ($this->checkDupe($params['invoiceID'], CRM_Utils_Array::value('contributionID', $params))) {
+            throw new CRM_Core_Exception('It appears that this transaction is a duplicate.  Have you already submitted the form once?  If so there may have been a connection problem.  Check your email for a receipts.  If you do not receive a receipt within 2 hours you can try your transaction again.  If you continue to have problems please contact the site administrator.');
+        }
     }
     return $eWAYRequest;
   }
