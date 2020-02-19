@@ -379,6 +379,9 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
     if ($entity == 'recur') {
       $entity = 'contribution_recur';
     }
+    if (empty($entity)) {
+      return 0;
+    }
     try {
       return civicrm_api3($entity, 'getvalue', array('id' => $entityID, 'return' => 'contact_id'));
     }
