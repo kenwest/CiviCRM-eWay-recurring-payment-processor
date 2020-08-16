@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <menu>
   <item>
-    <path>civicrm/eway/settings</path>
-    <page_callback>CRM_Form_EwaySettings</page_callback>
+    <path>civicrm/settings/eway</path>
+    <page_callback>CRM_Admin_Form_Generic</page_callback>
     <title>Eway Settings</title>
     <access_arguments>administer payment processors</access_arguments>
   </item>

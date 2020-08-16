@@ -30,6 +30,13 @@ function ewayrecurring_civicrm_install() {
 }
 
 /**
+ * Implementation of hook_civicrm_postInstall
+ */
+function ewayrecurring_civicrm_postInstall() {
+  return _ewayrecurring_civix_civicrm_postInstall();
+}
+
+/**
  * Implementation of hook_civicrm_uninstall
  */
 function ewayrecurring_civicrm_uninstall() {
@@ -92,33 +99,12 @@ function ewayrecurring_civicrm_managed(&$entities) {
  * @param array $menu
  */
 function ewayrecurring_civicrm_navigationMenu(&$menu) {
-  $maxID = CRM_Core_DAO::singleValueQuery("SELECT max(id) FROM civicrm_navigation");
-  $parentID = CRM_Core_DAO::singleValueQuery(
-    "SELECT id
-     FROM civicrm_navigation n
-     WHERE  n.name = 'Administer'
-       AND n.domain_id = " . CRM_Core_Config::domainID()
-  );
-  $navID = $maxID + 288;
-  $navigationMenu = array(
-    'attributes' => array(
-      'label' => 'Eway',
-      'name' => 'eway',
-      'url' => 'civicrm/eway/settings',
-      'permission' => 'administer CiviCRM',
-      'operator' => NULL,
-      'separator' => NULL,
-      'parentID' => $parentID,
-      'active' => 1,
-      'navID' => $navID,
-    ),
-  );
-  if ($parentID) {
-    $menu[$parentID]['child'][$navID] = $navigationMenu;
-  }
-  else {
-    $menu[$navID] = $navigationMenu;
-  }
+  _ewayrecurring_civix_insert_navigation_menu($menu, 'Administer', [
+    'label' => 'Eway',
+    'name' => 'eway',
+    'url' => 'civicrm/settings/eway',
+    'permission' => 'administer CiviCRM',
+  ]);
 }
 
 /**

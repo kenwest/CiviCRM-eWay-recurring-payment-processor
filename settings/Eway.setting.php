@@ -6,7 +6,7 @@ return array(
     'group' => 'eway',
     'filter' => 'eway',
     'name' => 'eway_developer_mode',
-    'type' => 'Bool',
+    'type' => 'Boolean',
     'add' => '1.0',
     'is_domain' => 1,
     'is_contact' => 0,
@@ -14,7 +14,7 @@ return array(
     'title' => 'Enable developer mode for eWay',
     'help_text' => 'Success is assumed',
     'default' => 0,
-    'type' => 'Boolean',
-    'quick_form_type' => 'YesNo',
+    'html_type' => 'checkbox',
+    'settings_pages' => ['eway' => ['weight' => 10]],
   ),
 );
