@@ -21,7 +21,8 @@
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
  +--------------------------------------------------------------------+
-*/
+ */
+
 /**
  * EWay API call.
  *
@@ -109,7 +110,7 @@ function _civicrm_api3_job_eway_process_contribution($instance) {
     $instance['contribution_recur']->failure_count += 1;
     if (_eway_recurring_is_recurring_expired($instance['contribution_recur']->id)) {
       $instance['contribution_recur']->contribution_status_id = _eway_recurring_get_contribution_status_id('Cancelled');
-      $instance['contribution_recur']->cancel_date = CRM_Utils_Date::isoToMysql(date('Y-m-d H:i:s'));
+      $instance['contribution_recur']->cancel_date = date('Y-m-d H:i:s');
     }
   }
 
@@ -159,28 +160,6 @@ function get_eway_token_clients($domainID) {
     $result[$id] = CRM_Core_Payment_EwayUtils::getClient($id);
   }
   return $result;
-}
-
-/**
- * Get first_contribution_from_recurring.
- *
- * find the latest contribution belonging to the recurring contribution so that we
- * can extract some info for cloning, like source etc
- *
- * @param int $recur_id
- *
- * @return CRM_Contribute_BAO_Contribution
- *   Contribution Object.
- */
-function get_first_contribution_from_recurring($recur_id) {
-  $contributions = new CRM_Contribute_BAO_Contribution();
-  $contributions->whereAdd("`contribution_recur_id` = " . $recur_id);
-  $contributions->orderBy("`id`");
-  $contributions->find();
-
-  while ($contributions->fetch()) {
-    return clone ($contributions);
-  }
 }
 
 /**
@@ -261,7 +240,7 @@ function get_scheduled_contributions($eway_token_clients, $params) {
   $result = array();
 
   while ($scheduled_today->fetch()) {
-    $past_contribution = get_first_contribution_from_recurring($scheduled_today->id);
+    $past_contribution = CRM_Contribute_BAO_ContributionRecur::getTemplateContribution($scheduled_today->id);
 
     $new_contribution_record = new CRM_Contribute_BAO_Contribution();
     $new_contribution_record->contact_id = $scheduled_today->contact_id;
@@ -281,11 +260,11 @@ function get_scheduled_contributions($eway_token_clients, $params) {
     $new_contribution_record->currency = $scheduled_today->currency;
 
     // copy info from previous contribution belonging to the same recurring contribution
-    if ($past_contribution != NULL) {
-      $new_contribution_record->contribution_page_id = $past_contribution->contribution_page_id;
-      $new_contribution_record->payment_instrument_id = $past_contribution->payment_instrument_id;
-      $new_contribution_record->source = $past_contribution->source;
-      $new_contribution_record->address_id = $past_contribution->address_id;
+    if ($past_contribution) {
+      $new_contribution_record->contribution_page_id = $past_contribution['contribution_page_id'];
+      $new_contribution_record->payment_instrument_id = $past_contribution['payment_instrument_id'];
+      $new_contribution_record->source = $past_contribution['source'];
+      $new_contribution_record->address_id = $past_contribution['address_id'];
     }
 
     $result[] = array(
@@ -373,18 +352,14 @@ function complete_contribution($contribution) {
  * @throws \CiviCRM_API3_Exception
  */
 function repeat_contribution($contribution, $status_id, $amount_in_cents) {
-  $actions = civicrm_api3('Contribution', 'getactions', array());
+  $actions = civicrm_api3('Contribution', 'getactions', []);
   if (in_array('repeattransaction', $actions['values'])) {
-    civicrm_api3('contribution', 'repeattransaction', array(
+    civicrm_api3('contribution', 'repeattransaction', [
       'trxn_id' => $contribution->trxn_id,
       'contribution_status_id' => $status_id,
       'total_amount' => $amount_in_cents / 100,
-      'original_contribution_id' => civicrm_api3('contribution', 'getvalue', array(
-        'return' => 'id',
-        'contribution_recur_id' => $contribution->contribution_recur_id,
-        'options' => array('limit' => 1, 'sort' => 'id ASC'),
-      )),
-    ));
+      'original_contribution_id' => CRM_Contribute_BAO_ContributionRecur::getTemplateContribution($contribution->contribution_recur_id)['id'],
+    ]);
   }
   else {
     // Legacy - expect messed up line items. CRM-15996.
@@ -404,10 +379,8 @@ function repeat_contribution($contribution, $status_id, $amount_in_cents) {
  *   The contribution object.
  */
 function fail_contribution($failedContribution) {
-  $contributionStatus = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
-
-  $failedContribution->contribution_status_id = array_search('Failed', $contributionStatus);
-  $failedContribution->receive_date = CRM_Utils_Date::isoToMysql(date('Y-m-d H:i:s'));
+  $failedContribution->contribution_status_id = CRM_Core_PseudoConstant::getKey('CRM_Contribute_BAO_Contribution', 'contribution_status_id', 'Failed');
+  $failedContribution->receive_date = date('Y-m-d H:i:s');
   $failedContribution->save();
   return $failedContribution;
 }
@@ -448,8 +421,7 @@ function _eway_recurring_is_recurring_expired($recurringContributionID) {
  * @return int
  */
 function _eway_recurring_get_contribution_status_id($statusName) {
-  $statuses = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
-  return array_search($statusName, $statuses);
+  return CRM_Core_PseudoConstant::getKey('CRM_Contribute_BAO_Contribution', 'contribution_status_id', $statusName);
 }
 
 /**
@@ -467,14 +439,14 @@ function update_recurring_contribution($current_recur) {
    */
   $updated_recur = $current_recur;
   $updated_recur->id = $current_recur->id;
-  $updated_recur->modified_date = CRM_Utils_Date::isoToMysql(date('Y-m-d H:i:s'));
+  $updated_recur->modified_date = date('Y-m-d H:i:s');
   $updated_recur->failure_count = $current_recur->failure_count;
 
   /*
    * Update the next date to schedule a contribution. If all installments complete, mark the recurring contribution as complete
    */
   if (_versionAtLeast(4.4)) {
-    $updated_recur->next_sched_contribution_date = CRM_Utils_Date::isoToMysql(date('Y-m-d 00:00:00', strtotime('+' . $current_recur->frequency_interval . ' ' . $current_recur->frequency_unit)));
+    $updated_recur->next_sched_contribution_date = date('Y-m-d 00:00:00', strtotime('+' . $current_recur->frequency_interval . ' ' . $current_recur->frequency_unit));
   }
   else {
     $updated_recur->next_sched_contribution = CRM_Utils_Date::isoToMysql(date('Y-m-d 00:00:00', strtotime('+' . $current_recur->frequency_interval . ' ' . $current_recur->frequency_unit)));
@@ -491,7 +463,7 @@ function update_recurring_contribution($current_recur) {
         $updated_recur->next_sched_contribution = NULL;
       }
       $updated_recur->contribution_status_id = _eway_recurring_get_contribution_status_id('Completed');
-      $updated_recur->end_date = CRM_Utils_Date::isoToMysql(date('Y-m-d 00:00:00'));
+      $updated_recur->end_date = date('Y-m-d 00:00:00');
     }
   }
 
