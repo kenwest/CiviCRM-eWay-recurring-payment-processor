@@ -1,11 +1,11 @@
 <?php
 
-// As this handles recurring and non-recurring, we also need to include original api libraries
-require_once 'packages/eWAY/eWAY_GatewayRequest.php';
-require_once 'packages/eWAY/eWAY_GatewayResponse.php';
-
-use Civi\Payment\Exception\PaymentProcessorException;
 use CRM_Ewayrecurring_ExtensionUtil as E;
+use Civi\Payment\Exception\PaymentProcessorException;
+
+// As this handles recurring and non-recurring, we also need to include original api libraries
+require_once E::path('lib/eWAY/eWAY_GatewayRequest.php');
+require_once E::path('lib/eWAY/eWAY_GatewayResponse.php');
 
 /**
  * Class CRM_Core_Payment_Ewayrecurring
@@ -15,7 +15,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
   /**
    * (not used, implicit in the API, might need to convert?)
    */
-  const CHARSET  = 'UTF-8';
+  const CHARSET = 'UTF-8';
 
   /**
    * We only need one instance of this object. So we use the singleton
@@ -41,7 +41,6 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
     $this->_processorName    = ts('eWay Recurring');
   }
 
-
   /**
    * Singleton function used to manage this object.
    *
@@ -63,7 +62,6 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
     }
     return self::$_singleton[$processorName];
   }
-
 
   /**********************************************************
    * This function sends request and receives response from eWAY payment gateway.
@@ -99,7 +97,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
     // Was the recurring payment check box checked?
     if (isset($params['is_recur']) && $params['is_recur'] == 1) {
       // Create the customer via the API.
-      try{
+      try {
         $result = $this->createToken($this->_paymentProcessor, $params);
       }
       catch (Exception $e) {
@@ -196,8 +194,8 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
    * @param null $contributionID
    *   If a contribution exists pass in the contribution ID.
    *
-   * @return bool True if ID exists, else false
-   * True if ID exists, else false
+   * @return bool
+   *   True if ID exists, else false
    */
   protected function checkDupe($invoiceId, $contributionID = NULL) {
     $contribution = new CRM_Contribute_DAO_Contribution();
@@ -209,9 +207,9 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
     return $contribution->find();
   }
 
-  /*************************************************************************************************
+  /**
    * This function checks the eWAY response status - returning a boolean false if status != 'true'
-   ************************************************************************************************
+   *
    *
    * @param GatewayResponse $response
    *
@@ -253,7 +251,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
     if (!empty($errorMsg)) {
       if (civicrm_api3('setting', 'getvalue', array(
         'group' => 'eway',
-        'name' => 'eway_developer_mode'
+        'name' => 'eway_developer_mode',
       ))) {
         CRM_Core_Session::setStatus(ts('Site is in developer mode so these errors are being ignored: ' . implode(', ', $errorMsg)));
         return NULL;
@@ -264,7 +262,6 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
       return NULL;
     }
   }
-
 
   /**
    * Cancel EWay Subscription.
@@ -387,7 +384,6 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
 
     $responseData = curl_exec($submit);
 
-
     //----------------------------------------------------------------------------------------------------
     // See if we had a curl error - if so tell 'em and bail out
     //
@@ -461,8 +457,8 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
   protected function createToken($paymentProcessor, $params) {
     if (civicrm_api3('setting', 'getvalue', array(
       'group' => 'eway',
-      'name' => 'eway_developer_mode'
-      ))) {
+      'name' => 'eway_developer_mode',
+    ))) {
       // I'm not sure about setting status as in future we might do this in an api call.
       CRM_Core_Session::setStatus(ts('Site is in developer mode. No communication with eway has taken place'));
       return uniqid();
@@ -709,7 +705,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
     //----------------------------------------------------------------------------------------------------
     // Convert to XML and send the payment information
     //----------------------------------------------------------------------------------------------------
-    $requestXML = $eWAYRequest->ToXML();
+    $requestXML = $eWAYRequest->ToXml();
     $responseData = $this->callEwayGateway($requestXML);
 
     //----------------------------------------------------------------------------------------------------
@@ -769,7 +765,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
     // If the site is in developer mode we return a mock success.
     if (civicrm_api3('setting', 'getvalue', array(
       'group' => 'eway',
-      'name' => 'eway_developer_mode'
+      'name' => 'eway_developer_mode',
     ))) {
       return array(
         'trxn_id' => uniqid(),
