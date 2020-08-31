@@ -41,7 +41,7 @@
  * This is because the returned $params['trxn_result_code'] is in fact a string and not a boolean.
  **************************************************************************************************************************/
  
-class GatewayResponse
+class EwayRecurringGatewayResponse
 {
 	var $txAmount              = 0;
 	var $txTransactionNumber   = "";

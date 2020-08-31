@@ -39,7 +39,7 @@ use CRM_Ewayrecurring_ExtensionUtil as E;
  *
  **************************************************************************************************************************/
  
-class GatewayRequest
+class EwayRecurringGatewayRequest
 {
 	var $txCustomerID = "";
 
@@ -232,7 +232,9 @@ class GatewayRequest
    ********************************************************/
    function CreateNode($NodeName, $NodeValue)
    {
-    require_once E::path('lib/XML/Util.php');
+    if (!class_exists('XML_Util')) {
+      require_once E::path('lib/XML/Util.php');
+    }
 
     $xml = new XML_Util();
     $node = "<" . $NodeName . ">" . $xml->replaceEntities($NodeValue) . "</" . $NodeName . ">";

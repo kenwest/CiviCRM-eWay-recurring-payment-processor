@@ -211,7 +211,7 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
    * This function checks the eWAY response status - returning a boolean false if status != 'true'
    *
    *
-   * @param GatewayResponse $response
+   * @param EwayRecurringGatewayResponse $response
    *
    * @return bool
    */
@@ -591,13 +591,13 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
    * @param $params
    *   Form parameters - this could be altered by hook so is a reference
    *
-   * @return GatewayRequest
+   * @return EwayRecurringGatewayRequest
    * @throws \CRM_Core_Exception
    */
   protected function getEwayRequest(&$params) {
-    $eWAYRequest = new GatewayRequest();
+    $eWAYRequest = new EwayRecurringGatewayRequest();
 
-    if (($eWAYRequest == NULL) || (!($eWAYRequest instanceof GatewayRequest))) {
+    if (($eWAYRequest == NULL) || (!($eWAYRequest instanceof EwayRecurringGatewayRequest))) {
       throw new PaymentProcessorException("Error: Unable to create eWAY Request object.", 9000);
     }
 
@@ -696,9 +696,9 @@ class CRM_Core_Payment_Ewayrecurring extends CRM_Core_Payment {
     if ($this->getDummySuccessResult()) {
       return $this->getDummySuccessResult();
     }
-    $eWAYResponse = new GatewayResponse();
+    $eWAYResponse = new EwayRecurringGatewayResponse();
 
-    if (($eWAYResponse == NULL) || (!($eWAYResponse instanceof GatewayResponse))) {
+    if (($eWAYResponse == NULL) || (!($eWAYResponse instanceof EwayRecurringGatewayResponse))) {
       throw new PaymentProcessorException("Error: Unable to create eWAY Response object.", 9000);
     }
 
